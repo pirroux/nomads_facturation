@@ -8,6 +8,15 @@ data_factures/*.pdf
 
 # Fichiers Excel
 *.xlsx
+# Fichiers video
+*.mp4
+*.MP4
+*.avi
+*.AVI
+*.mov
+*.MOV
+
+
 
 # Temporary files
 temp_files/
