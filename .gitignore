@@ -40,6 +40,9 @@ var/
 *.swp
 *.swo
 
+# service account keys
+/service_account_keys/
+
 # Environnement virtuel
 venv/
 ENV/

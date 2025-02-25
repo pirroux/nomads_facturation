@@ -64,6 +64,9 @@ def process_pdfs(pdf_paths):
             data = extractor.extract_invoice_data(text)
             logger.info(f"Extracted data: {data}")
 
+            # Calculer le nombre total d'articles
+            total_quantity = sum(article['quantite'] for article in data.get("invoice_data", {}).get("articles", []))
+
             # Stocker les données dans le format attendu par create_invoice_dataframe
             invoices_data[pdf_path.name] = {
                 "text": text,
@@ -71,7 +74,7 @@ def process_pdfs(pdf_paths):
                     "type": data.get("invoice_data", {}).get("type", ""),
                     "TOTAL": data.get("invoice_data", {}).get("TOTAL", {}),
                     "articles": data.get("invoice_data", {}).get("articles", []),
-                    "nombre_articles": data.get("invoice_data", {}).get("nombre_articles", 0),
+                    "nombre_articles": total_quantity,
                     "Type_Vente": data.get("invoice_data", {}).get("Type_Vente", ""),
                     "Réseau_Vente": data.get("invoice_data", {}).get("Réseau_Vente", ""),
                     "commentaire": data.get("invoice_data", {}).get("commentaire", ""),

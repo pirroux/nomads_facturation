@@ -1,0 +1,31 @@
+# service account keys
+/service_account_keys/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+venv/
+.env/
+
+# Temporary files
+temp_files/
+
+# Logs and databases
+*.log
+*.sqlite
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Other unnecessary files
+.DS_Store  # macOS specific

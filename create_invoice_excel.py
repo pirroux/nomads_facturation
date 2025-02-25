@@ -5,18 +5,36 @@ import re
 import pytz  # Pour gérer les fuseaux horaires
 from pathlib import Path
 from openpyxl import Workbook
+import os
 
 def load_invoice_data():
     """Charge les données des factures depuis le fichier JSON"""
     try:
         with open('factures.json', 'r', encoding='utf-8') as f:
-            return json.load(f)
+            invoices_data = json.load(f)
+
+            # Calculer le nombre total d'articles pour chaque facture
+            for invoice in invoices_data.values():
+                articles = invoice['data'].get('articles', [])
+                total_quantity = sum(article.get('quantite', 0) for article in articles)  # Ensure to use .get() to avoid KeyError
+                invoice['data']['nombre_articles'] = total_quantity  # Mettre à jour le nombre d'articles
+
+            return invoices_data
     except FileNotFoundError:
         print("Erreur: Le fichier factures.json n'a pas été trouvé")
         return {}
     except json.JSONDecodeError:
         print("Erreur: Le fichier factures.json n'est pas un JSON valide")
         return {}
+
+def save_invoice_data(invoices_data):
+    """Sauvegarde les données des factures dans le fichier JSON"""
+    try:
+        with open('factures.json', 'w', encoding='utf-8') as f:
+            json.dump(invoices_data, f, ensure_ascii=False, indent=2)
+        print("Factures sauvegardées avec succès.")
+    except Exception as e:
+        print(f"Erreur lors de la sauvegarde des factures: {str(e)}")
 
 def format_date(date_str: str) -> str:
     """Convertit une date YYYY-MM-DD en MM/DD/YYYY"""
@@ -30,7 +48,6 @@ def format_date(date_str: str) -> str:
 
 def create_invoice_dataframe(invoices_data):
     """Crée un DataFrame à partir des données des factures"""
-    # Définir les headers dans le même ordre exact que create_excel_from_data
     headers = [
         'Type-facture', 'n°ordre', 'saisie', 'Syst', 'N° Syst.', 'comptable', 'Type_facture',
         'Type_Vente', 'Réseau_Vente', 'Client', 'Typologie', 'Banque créditée',
@@ -50,6 +67,10 @@ def create_invoice_dataframe(invoices_data):
         try:
             data = invoice['data']
             row = {col: '' for col in headers}  # Initialiser toutes les colonnes avec des valeurs vides
+
+            # Calculer la quantité totale
+            total_quantity = sum(article.get('quantite', 0) for article in data.get('articles', []))
+            row['quantité'] = total_quantity  # Mettre à jour la colonne 'quantité'
 
             # Extraire la date
             date = data.get('date', '')
@@ -126,7 +147,6 @@ def create_invoice_dataframe(invoices_data):
             row['Credit HT'] = total_ht  # Utiliser le total HT avec remise
             row['remise'] = remise
             row['TVA Collectee'] = data.get('TOTAL', {}).get('tva', 0)
-            row['quantité'] = data.get('nombre_articles', 0)
 
             # Remplir les articles
             articles = data.get('articles', [])
@@ -236,6 +256,9 @@ def create_excel_from_data(invoices_data):
     # Sauvegarder en Excel
     excel_path = "temp_files/factures.xlsx"
     df.to_excel(excel_path, index=False)
+
+    # Save the updated invoices data to factures.json
+    save_invoice_data(invoices_data)
 
     return Path(excel_path)
 

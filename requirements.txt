@@ -63,4 +63,4 @@ urllib3==2.3.0
 uvicorn==0.34.0
 XlsxWriter==3.2.2
 google-cloud-storage==2.14.0
-python-dotenv==1.0.0
+python-dotenv>1.0.0
