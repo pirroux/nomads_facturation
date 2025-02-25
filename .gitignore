@@ -50,3 +50,14 @@ ENV/
 # Logs et bases de données
 *.log
 *.sqlite
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose.yml
+docker-compose.override.yml
+.docker/
+
+# Docker build artifacts
+*.tar
+*.tar.gz
