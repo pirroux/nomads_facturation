@@ -5,9 +5,20 @@ data_factures/*.pdf
 # Fichiers images
 *.png
 *.PNG
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.ico
 
 # Fichiers Excel
 *.xlsx
+*.xls
+*.xlsm
+*.xlsb
+*.csv
+
 # Fichiers video
 *.mp4
 *.MP4
@@ -15,12 +26,30 @@ data_factures/*.pdf
 *.AVI
 *.mov
 *.MOV
+*.wmv
+*.WMV
+*.mkv
+*.MKV
+*.flv
+*.FLV
+*.webm
+*.WEBM
 
-
+# Fichiers audio
+*.mp3
+*.wav
+*.ogg
+*.flac
 
 # Temporary files
 temp_files/
 factures_auto_*.xlsx
+*.tmp
+*.temp
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
 
 # Python
 __pycache__/
@@ -42,31 +71,71 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
 
 # IDE
 .idea/
 .vscode/
-*.swp
-*.swo
+*.sublime-project
+*.sublime-workspace
+.project
+.pydevproject
+.settings/
 
-# service account keys
+# Service account keys and sensitive data
 /service_account_keys/
+*.pem
+*.key
+*.cert
+*.p12
 
 # Environnement virtuel
 venv/
 ENV/
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
 # Logs et bases de données
 *.log
 *.sqlite
+*.db
+*.sql
 
 # Docker
 .dockerignore
 Dockerfile
-docker-compose.yml
-docker-compose.override.yml
+docker-compose*.yml
 .docker/
+docker/
 
 # Docker build artifacts
 *.tar
 *.tar.gz
+*.tgz
+
+# Large data files
+factures.json
+*.parquet
+*.feather
+*.pickle
+*.pkl
+*.h5
+*.hdf5
+*.npy
+*.npz
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+*.ipynb
+
+# Specific to your project
+# Add any other specific files or directories you want to ignore
