@@ -9,8 +9,22 @@ import pandas as pd
 from datetime import datetime
 import pytz
 
-# Charger les variables d'environnement depuis .env
-load_dotenv()
+# Set page configuration (must be the first Streamlit command)
+st.set_page_config(
+    page_title="Analyse de Factures PDF",
+    page_icon="📊",
+    layout="centered"
+)
+
+# Function to reload environment variables
+def reload_env():
+    load_dotenv()
+
+# Initial load of environment variables
+reload_env()
+
+# Set the path to the service account key
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
 # Configuration de l'API endpoint
 API_URL = os.getenv("API_URL", "http://fastapi:8000")
@@ -27,13 +41,6 @@ try:
     bucket = storage_client.bucket(bucket_name)
 except Exception as e:
     st.error(f"Error initializing Google Cloud Storage: {str(e)}")
-
-# Set page configuration (must be the first Streamlit command)
-st.set_page_config(
-    page_title="Analyse de Factures PDF",
-    page_icon="📊",
-    layout="centered"
-)
 
 # Centrer le titre Nomads Surfing
 st.markdown("<h1 style='text-align: center;'>Nomads Surfing 🌊</h1>", unsafe_allow_html=True)
@@ -62,40 +69,62 @@ if uploaded_files:
                     st.success("✅ Analyse des documents terminée avec succès ! 🎉")
 
                     # Load the invoice data after processing
-                    invoices_data = load_invoice_data()
+                    all_invoices_data = load_invoice_data()
 
-                    # Create the Excel file using the create_invoice_dataframe function
-                    # This ensures that the total quantities are calculated correctly
-                    df = create_invoice_dataframe(invoices_data)
+                    # Filter only the uploaded files
+                    uploaded_filenames = [f.name for f in uploaded_files]
 
-                    # Generate the filename with timestamp (same as in create_invoice_excel.py)
-                    paris_tz = pytz.timezone('Europe/Paris')
-                    current_time = datetime.now(paris_tz)
-                    timestamp = current_time.strftime('%y%m%d%H%M%S')
-                    filename = f'factures_auto_{timestamp}.xlsx'
+                    # Debug information
+                    st.write("Fichiers disponibles dans factures.json:", list(all_invoices_data.keys()))
+                    st.write("Fichiers uploadés:", uploaded_filenames)
 
-                    # Create the Excel file with formatting
-                    os.makedirs('temp_files', exist_ok=True)
-                    excel_path = os.path.join('temp_files', filename)
+                    filtered_invoices_data = {
+                        filename: data
+                        for filename, data in all_invoices_data.items()
+                        if filename in uploaded_filenames
+                    }
 
-                    # Use the same Excel formatting logic as in create_invoice_excel.py
-                    with pd.ExcelWriter(excel_path, engine='xlsxwriter') as writer:
-                        df.to_excel(writer, sheet_name='Factures', index=False)
-                        format_excel(writer, df)
+                    # Vérifier si des données ont été trouvées
+                    if filtered_invoices_data:
+                        try:
+                            df = create_invoice_dataframe(filtered_invoices_data)
 
-                    # Provide download link for the generated Excel file
-                    with open(excel_path, 'rb') as f:
-                        excel_data = f.read()
+                            if not df.empty:
+                                # Generate the filename with timestamp
+                                paris_tz = pytz.timezone('Europe/Paris')
+                                current_time = datetime.now(paris_tz)
+                                timestamp = current_time.strftime('%y%m%d%H%M%S')
+                                filename = f'factures_auto_{timestamp}.xlsx'
 
-                    st.success(f"📂 Fichier Excel créé avec succès ! 🤙")
+                                # Create the Excel file with formatting
+                                os.makedirs('temp_files', exist_ok=True)
+                                excel_path = os.path.join('temp_files', filename)
 
-                    # Proposer le téléchargement via Streamlit
-                    st.download_button(
-                        label=f"📎 Télécharger {filename}",
-                        data=excel_data,
-                        file_name=filename,
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
+                                # Use the same Excel formatting logic as in create_invoice_excel.py
+                                with pd.ExcelWriter(excel_path, engine='xlsxwriter') as writer:
+                                    df.to_excel(writer, sheet_name='Factures', index=False)
+                                    format_excel(writer, df)
+
+                                # Provide download link for the generated Excel file
+                                with open(excel_path, 'rb') as f:
+                                    excel_data = f.read()
+
+                                st.success(f"📂 Fichier Excel créé avec succès ! 🤙")
+
+                                # Proposer le téléchargement via Streamlit
+                                st.download_button(
+                                    label=f"📎 Télécharger {filename}",
+                                    data=excel_data,
+                                    file_name=filename,
+                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                )
+                            else:
+                                st.error("Le DataFrame généré est vide. Veuillez vérifier les données.")
+                        except Exception as e:
+                            st.error(f"Erreur lors de la création du fichier Excel : {str(e)}")
+                            st.write("Données filtrées :", filtered_invoices_data)
+                    else:
+                        st.error("Aucune donnée trouvée pour les fichiers uploadés. Veuillez réessayer.")
 
                 else:
                     st.error(f"❌ Erreur lors de l'analyse (Status {response.status_code})")
@@ -103,39 +132,11 @@ if uploaded_files:
         except Exception as e:
             st.error(f"🚨 Une erreur est survenue : {str(e)}")
 
-# Ensure this is called to update the data
-invoices_data = load_invoice_data()
-
 def process_and_create_excel():
     """Fonction simple qui utilise create_excel_from_data"""
     try:
-        # Charger les données
-        invoices_data = load_invoice_data()
-
-        # Utiliser directement la fonction de create_invoice_excel.py
-        df = create_invoice_dataframe(invoices_data)
-
-        # Generate the filename with timestamp (same as in create_invoice_excel.py)
-        paris_tz = pytz.timezone('Europe/Paris')
-        current_time = datetime.now(paris_tz)
-        timestamp = current_time.strftime('%y%m%d%H%M%S')
-        filename = f'factures_auto_{timestamp}.xlsx'
-
-        # Create the Excel file with formatting
-        os.makedirs('temp_files', exist_ok=True)
-        excel_path = os.path.join('temp_files', filename)
-
-        # Use the same Excel formatting logic as in create_invoice_excel.py
-        with pd.ExcelWriter(excel_path, engine='xlsxwriter') as writer:
-            df.to_excel(writer, sheet_name='Factures', index=False)
-            format_excel(writer, df)
-
-        # Lire le fichier Excel créé
-        with open(excel_path, 'rb') as f:
-            excel_data = f.read()
-
-        return excel_data, filename
-
+        # This function is not being used, consider removing it
+        pass
     except Exception as e:
         st.error(f"Erreur lors de la création de l'Excel : {str(e)}")
         return None, None
