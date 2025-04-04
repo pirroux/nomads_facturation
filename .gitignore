@@ -1,0 +1,97 @@
+# Fichiers PDF
+*.pdf
+data_factures/
+
+# Fichiers images
+*.png
+*.PNG
+
+# Fichiers Excel
+*.xlsx
+
+# Temporary files
+temp_files/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environnement virtuel
+venv/
+ENV/
+nomads_facturation/
+
+# Logs et bases de données
+*.log
+*.sqlite
+
+# Fichiers de configuration et clés
+*.env
+.env
+config.ini
+credentials.json
+token.json
+
+# Clés de compte de service Google Cloud
+service_account_keys/
+*-[a-f0-9]*.json
+*credentials*.json
+*service-account*.json
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Fichiers de données sensibles
+factures.json
+*secrets*
+
+# fichiers vidéo
+*.mp4
+*.avi
+*.mkv
+*.mov
+*.wmv
+*.flv
+*.webm
+*.m4v
+*.m4a
+*.m4b
+*.m4p
+*.m4v
+
+# Fichiers macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Fichiers de données volumineux
+factures.json
+factures clients.xlsx
+
+# Docker
+*.tar
+.docker_images
