@@ -1,55 +1,16 @@
 # Fichiers PDF
 *.pdf
-data_factures/*.pdf
+data_factures/
 
 # Fichiers images
 *.png
 *.PNG
-*.jpg
-*.jpeg
-*.gif
-*.bmp
-*.tiff
-*.ico
 
 # Fichiers Excel
 *.xlsx
-*.xls
-*.xlsm
-*.xlsb
-*.csv
-
-# Fichiers video
-*.mp4
-*.MP4
-*.avi
-*.AVI
-*.mov
-*.MOV
-*.wmv
-*.WMV
-*.mkv
-*.MKV
-*.flv
-*.FLV
-*.webm
-*.WEBM
-
-# Fichiers audio
-*.mp3
-*.wav
-*.ogg
-*.flac
 
 # Temporary files
 temp_files/
-factures_auto_*.xlsx
-*.tmp
-*.temp
-*.swp
-*.swo
-.DS_Store
-Thumbs.db
 
 # Python
 __pycache__/
@@ -71,71 +32,66 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.nox/
 
 # IDE
 .idea/
 .vscode/
-*.sublime-project
-*.sublime-workspace
-.project
-.pydevproject
-.settings/
-
-# Service account keys and sensitive data
-/service_account_keys/
-*.pem
-*.key
-*.cert
-*.p12
+*.swp
+*.swo
 
 # Environnement virtuel
 venv/
 ENV/
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+nomads_facturation/
 
 # Logs et bases de données
 *.log
 *.sqlite
-*.db
-*.sql
+
+# Fichiers de configuration et clés
+*.env
+.env
+config.ini
+credentials.json
+token.json
+
+# Clés de compte de service Google Cloud
+service_account_keys/
+*-[a-f0-9]*.json
+*credentials*.json
+*service-account*.json
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Fichiers de données sensibles
+factures.json
+*secrets*
+
+# fichiers vidéo
+*.mp4
+*.avi
+*.mkv
+*.mov
+*.wmv
+*.flv
+*.webm
+*.m4v
+*.m4a
+*.m4b
+*.m4p
+*.m4v
+
+# Fichiers macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Fichiers de données volumineux
+factures.json
+factures clients.xlsx
 
 # Docker
-.dockerignore
-Dockerfile
-docker-compose*.yml
-.docker/
-docker/
-
-# Docker build artifacts
 *.tar
-*.tar.gz
-*.tgz
-
-# Large data files
-factures.json
-*.parquet
-*.feather
-*.pickle
-*.pkl
-*.h5
-*.hdf5
-*.npy
-*.npz
-
-# Jupyter Notebooks
-.ipynb_checkpoints
-*.ipynb
-
-# Specific to your project
-# Add any other specific files or directories you want to ignore
+.docker_images
