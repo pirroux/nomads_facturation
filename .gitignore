@@ -95,3 +95,6 @@ factures clients.xlsx
 # Docker
 *.tar
 .docker_images
+
+.DS_Store
+.env
