@@ -414,14 +414,14 @@ def extract_articles(text: str, is_meg: bool) -> List[Dict]:
     """Extrait les articles du texte"""
     articles = []
     if is_meg:
-        # Pattern pour les articles MEG basé sur le format tabulaire exact
+        # Pattern modifié pour accepter le format XXXX-XXXXXX-XXXX
         article_pattern = (
-            r'ART(\d+)\s*-\s*([^\n]+?)\s*'  # Référence et description
-            r'(\d+,\d+)\s*'                 # Quantité
-            r'(\d+[\s\d]*,\d+)\s*€\s*'      # Prix unitaire
-            r'(\d+,\d+)%\s*'                # Remise
-            r'(\d+[\s\d]*,\d+)\s*€\s*'      # Montant HT
-            r'(\d+,\d+)%'                   # TVA
+            r'([A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+)\s*-([^\n]+?)\s+'  # Référence au format XXXX-XXXXXX-XXXX et description
+            r'(\d+,\d+)\s+'                  # Quantité
+            r'(\d+[\s\d]*,\d+)\s*€\s+'       # Prix unitaire
+            r'(\d+,\d+)%\s+'                 # Remise
+            r'(\d+[\s\d]*,\d+)\s*€\s+'       # Montant HT
+            r'(\d+,\d+)%'                    # TVA
         )
 
         for match in re.finditer(article_pattern, text, re.MULTILINE | re.DOTALL):
@@ -431,7 +431,7 @@ def extract_articles(text: str, is_meg: bool) -> List[Dict]:
                 montant_ht = match.group(6).replace(' ', '')
 
                 articles.append({
-                    'reference': f"ART{match.group(1)}",
+                    'reference': match.group(1).strip(),  # Utiliser la référence telle quelle
                     'description': match.group(2).strip(),
                     'quantite': float(match.group(3).replace(',', '.')),
                     'prix_unitaire': float(prix_unitaire.replace(',', '.')),
@@ -439,6 +439,7 @@ def extract_articles(text: str, is_meg: bool) -> List[Dict]:
                     'montant_ht': float(montant_ht.replace(',', '.')),
                     'tva': float(match.group(7).replace(',', '.'))  # Déjà en pourcentage
                 })
+                print(f"  Article MEG extrait: {articles[-1]}")
             except (IndexError, ValueError) as e:
                 print(f"Erreur lors de l'extraction d'un article MEG: {e}")
                 continue
