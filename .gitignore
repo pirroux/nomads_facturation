@@ -109,3 +109,9 @@ data_factures/facturesv3/*.pdf
 # Logs
 logs/
 log/
+
+# Video files
+*.mov
+*.mp4
+*.avi
+*.mkv
