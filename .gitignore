@@ -8,6 +8,7 @@ data_factures/
 
 # Fichiers Excel
 *.xlsx
+*.xls
 
 # Temporary files
 temp_files/
@@ -16,6 +17,7 @@ temp_files/
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
 .Python
 env/
 build/
@@ -29,6 +31,7 @@ lib64/
 parts/
 sdist/
 var/
+wheels/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -42,6 +45,7 @@ var/
 # Environnement virtuel
 venv/
 ENV/
+.env
 nomads_facturation/
 
 # Logs et bases de données
@@ -70,10 +74,10 @@ factures.json
 *secrets*
 
 # fichiers vidéo
+*.mov
 *.mp4
 *.avi
 *.mkv
-*.mov
 *.wmv
 *.flv
 *.webm
@@ -98,3 +102,10 @@ factures clients.xlsx
 
 .DS_Store
 data_factures/.DS_Store
+
+# Fichiers de données
+data_factures/facturesv3/*.pdf
+
+# Logs
+logs/
+log/

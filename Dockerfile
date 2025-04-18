@@ -1,33 +1,29 @@
-# syntax=docker/dockerfile:1
-FROM --platform=linux/amd64 python:3.12-slim
+# Utiliser une image Python officielle comme base
+FROM python:3.11-slim
 
-# Variables d'environnement
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    DEBIAN_FRONTEND=noninteractive
-
-# Répertoire de travail
+# Définir le répertoire de travail dans le conteneur
 WORKDIR /app
 
-# Installation des dépendances système
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Installer les dépendances système nécessaires pour pdfplumber
+RUN apt-get update && apt-get install -y \
     build-essential \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copie des fichiers requirements
+# Copier les fichiers de dépendances
 COPY requirements.txt .
 
-# Installation des dépendances Python
+# Installer les dépendances Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copie du code source
+# Copier le code de l'application
 COPY . .
 
-# Création du dossier pour les fichiers temporaires
-RUN mkdir -p temp_files && chmod 777 temp_files
+# Créer les répertoires nécessaires
+RUN mkdir -p data_factures/facturesv3 temp_files
 
-# Exposition du port
-EXPOSE 8000
+# Exposer le port utilisé par Streamlit
+EXPOSE 8501
 
-# Commande de démarrage pour FastAPI
-CMD uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}
+# Définir la commande pour démarrer l'application
+CMD ["streamlit", "run", "streamlit_app.py", "--server.address", "0.0.0.0"]

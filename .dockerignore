@@ -1,26 +1,37 @@
-# service account keys
-/service_account_keys/
-
-# Python cache files
-__pycache__/
-*.py[cod]
-
-# Virtual environment
+# Environnement et cache Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
 venv/
-.env/
+.env
+.python-version
 
-# Temporary files
+# Fichiers de données volumineux
+*.mov
+*.mp4
+*.xlsx
+*.xls
 temp_files/
+data_factures/facturesv3/*.pdf
+factures.json
+
+# Fichiers système
+.DS_Store
+.git
+.gitignore
+
+# Fichiers IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # Logs and databases
 *.log
 *.sqlite
-
-# IDE and editor files
-.idea/
-.vscode/
-*.swp
-*.swo
 
 # Build artifacts
 build/
