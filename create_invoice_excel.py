@@ -320,35 +320,32 @@ def create_invoice_dataframe(invoices_data):
             total_ht = data.get('TOTAL', {}).get('total_ht', 0)
             remise = data.get('TOTAL', {}).get('remise', 0)
 
-            # Extraire explicitement la remise pour toutes les factures
-            if 'text' in invoice:
-                # Rechercher la remise dans le texte
-                remise_patterns = [
-                    r'Remise\s+(?:globale|totale)?\s*:?\s*(\d+[\s\d]*[,.]\d+)\s*€',
-                    r'Remise\s+(\d+[\s\d]*[,.]\d+)\s*%',
-                    r'Remise\s+(?:totale)?\s*:?\s*(\d+[\s\d]*[,.]\d+)',
-                ]
+            # Pour les factures MEG, calculer la remise totale en additionnant les remises de chaque article
+            if data.get('type') == 'meg':
+                remise_totale = 0
+                for article in articles:
+                    quantite = float(article.get('quantite', 0))
+                    prix_unitaire = article.get('prix_unitaire', 0)
+                    remise_pourcentage = article.get('remise', 0)  # Déjà en décimal (exemple: 0.10 pour 10%)
+                    remise_article = prix_unitaire * remise_pourcentage * quantite  # Remise en euros sur le montant HT
+                    remise_totale += remise_article
+                    print(f"  MEG: Remise de {remise_pourcentage*100}% sur article {article.get('reference', '')}: {remise_article} € (calculée sur le prix HT {prix_unitaire} €)")
 
-                for pattern in remise_patterns:
-                    remise_match = re.search(pattern, invoice.get('text', ''), re.IGNORECASE)
-                    if remise_match:
-                        remise_value = remise_match.group(1).replace(' ', '').replace(',', '.')
-                        if '%' in pattern:
-                            # Si c'est un pourcentage, calculer la valeur en euros
-                            remise_percent = float(remise_value)
-                            remise = total_ht * (remise_percent / 100)
-                        else:
-                            remise = float(remise_value)
-                        print(f"  Remise trouvée pour {filename}: {remise} €")
-                        break
+                remise = remise_totale
+                print(f"  MEG: Remise totale calculée: {remise} €")
 
             # Appliquer la remise si elle existe
             if remise:
-                # Convertir la remise TTC en HT en divisant par 1.2
-                remise_ht = round(float(remise) / 1.2, 2)
+                # Pour MEG, la remise est déjà en HT, pas besoin de la convertir
+                if data.get('type') == 'meg':
+                    remise_ht = remise
+                else:
+                    # Pour les autres types, convertir la remise TTC en HT
+                    remise_ht = round(float(remise) / 1.2, 2)
+
                 total_ht_avec_remise = total_ht - remise_ht
                 row['remise'] = remise_ht  # Écrire la remise HT dans la colonne dédiée
-                print(f"  Remise TTC: {remise} € -> Remise HT: {remise_ht} €")
+                print(f"  Remise HT appliquée: {remise_ht} €")
             else:
                 total_ht_avec_remise = total_ht
                 row['remise'] = 0
