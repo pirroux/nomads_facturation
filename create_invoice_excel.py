@@ -344,8 +344,11 @@ def create_invoice_dataframe(invoices_data):
 
             # Appliquer la remise si elle existe
             if remise:
-                total_ht_avec_remise = total_ht - float(remise)
-                row['remise'] = remise  # Écrire la remise globale dans la colonne dédiée
+                # Convertir la remise TTC en HT en divisant par 1.2
+                remise_ht = round(float(remise) / 1.2, 2)
+                total_ht_avec_remise = total_ht - remise_ht
+                row['remise'] = remise_ht  # Écrire la remise HT dans la colonne dédiée
+                print(f"  Remise TTC: {remise} € -> Remise HT: {remise_ht} €")
             else:
                 total_ht_avec_remise = total_ht
                 row['remise'] = 0
