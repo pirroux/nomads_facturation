@@ -419,12 +419,18 @@ def create_invoice_dataframe(invoices_data):
                 print(f"Solde pour {filename}: {total_ttc}")
             else:
                 # Si pas de total_ttc, essayer de le calculer à partir de total_ht et tva
-                if total_ht_avec_remise > 0:
-                    row['solde'] = float(total_ht_avec_remise + tva_value)
-                    print(f"Solde calculé pour {filename}: {row['solde']} (HT: {total_ht_avec_remise}, TVA: {tva_value})")
+                if total_ht_avec_remise > 0 and tva_value > 0:
+                    calculated_ttc = total_ht_avec_remise + tva_value
+                    row['solde'] = float(calculated_ttc)
+                    print(f"Solde calculé pour {filename}: {calculated_ttc} (HT: {total_ht_avec_remise}, TVA: {tva_value})")
                 else:
-                    row['solde'] = 0.0
-                    print(f"Attention: Pas de solde trouvé pour {filename}")
+                    # Essayer d'autres sources de données pour obtenir un solde valide
+                    if data.get('TOTAL', {}).get('total_ttc', 0) > 0:
+                        row['solde'] = float(data.get('TOTAL', {}).get('total_ttc', 0))
+                        print(f"Solde obtenu depuis data.TOTAL.total_ttc pour {filename}: {row['solde']}")
+                    else:
+                        row['solde'] = 0.0
+                        print(f"Attention: Pas de solde trouvé pour {filename}")
 
             row['contrôle paiement'] = data.get('statut_paiement', '')
             # Assurez-vous que reste dû est un float
@@ -500,11 +506,21 @@ def create_invoice_dataframe(invoices_data):
                 row['solde'] = clean_ttc
                 print(f"Solde mis à jour pour {filename} avec Credit TTC: {clean_ttc}")
 
-            # Cas spécifique pour les factures 990 et 994
+            # Cas spécifique pour les factures 990 et 994 - CORRECTION PRIORITAIRE
+            # Appliquer cette correction en priorité pour ces factures spécifiques
             if "FAC00000990" in filename or "FAC00000994" in filename:
                 if clean_ttc > 0:
                     row['solde'] = clean_ttc
                     print(f"Solde spécifique pour {filename}: {clean_ttc}")
+                elif row['Credit TTC'] > 0:
+                    row['solde'] = row['Credit TTC']
+                    print(f"Solde spécifique pour {filename} via Credit TTC: {row['Credit TTC']}")
+                elif total_ttc_value > 0:
+                    row['solde'] = total_ttc_value
+                    print(f"Solde spécifique pour {filename} via total_ttc_value: {total_ttc_value}")
+                elif data.get('TOTAL', {}).get('total_ttc', 0) > 0:
+                    row['solde'] = data.get('TOTAL', {}).get('total_ttc', 0)
+                    print(f"Solde spécifique pour {filename} via data.TOTAL.total_ttc: {data.get('TOTAL', {}).get('total_ttc', 0)}")
 
             # Remplir les articles
             article_index = 1
