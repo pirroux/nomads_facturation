@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Créer les répertoires nécessaires
-RUN mkdir -p data_factures/facturesv3 temp_files
+RUN mkdir -p data_factures/facturesv7 temp_files
 
 # Exposer le port utilisé par Streamlit
 EXPOSE 8501
