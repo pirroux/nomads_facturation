@@ -563,13 +563,16 @@ def create_invoice_dataframe(invoices_data):
 
                         print(f"  Ajout du transport gratuit: {frais_expedition.get('description', 'Transport gratuit')}")
 
+                    # Référence standardisée pour le transport
+                    reference_transport = "TRPF-TRANSP-0000"
+
                     # Choisir le prix pour l'affichage selon le type de facture
                     prix_pour_excel = prix_unitaire_ttc if data.get('type') == 'internet' else prix_unitaire
 
                     # Remplir les données de l'article d'expédition dans le DataFrame
-                    row[f'supfam{article_index}'] = frais_expedition.get('description', 'Transport')
+                    row[f'supfam{article_index}'] = ''  # Plus de description dans supfam
                     row[f'fam{article_index}'] = ''
-                    row[f'ref{article_index}'] = 'TRANSPORT'
+                    row[f'ref{article_index}'] = reference_transport
                     row[f'q{article_index}'] = 1
                     row[f'prix{article_index}'] = round(prix_pour_excel, 2)
                     row[f'r€{article_index}'] = 0  # Pas de remise sur le transport
