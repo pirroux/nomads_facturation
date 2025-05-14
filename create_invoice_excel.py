@@ -470,42 +470,41 @@ def create_invoice_dataframe(invoices_data):
                         article_remise = prix_unitaire * remise_pourcentage * quantite  # Remise en euros sur le montant HT
                         print(f"  MEG: Remise de {remise_pourcentage*100}% sur article {article.get('reference', '')}: {article_remise} € (calculée sur le prix HT {prix_unitaire} €)")
 
-                        # Quand une remise est détectée, prix1 doit être montant_ht + tva_euros (somme exacte)
-                        prix_pour_excel = (montant_ht + tva_euros) / quantite
+                        # Quand une remise est détectée, prix1 doit être montant_ht  (somme exacte)
+                        prix_pour_excel = montant_ht / quantite
                     else:
                         # Quand pas de remise, calcul standard
-                        prix_unitaire_ttc = prix_unitaire * (1 + taux_tva_decimal_article)
-                        prix_pour_excel = prix_unitaire_ttc
+                        #prix_unitaire_ttc = prix_unitaire * (1 + taux_tva_decimal_article)
+                        prix_pour_excel = prix_unitaire
 
                     print(f"  MEG: prix unitaire HT={prix_unitaire}, TVA={taux_tva_decimal_article*100}%, prix affiché={prix_pour_excel}")
 
                 else:  # internet ou acompte
-                    # Pour Internet, le prix_unitaire stocké peut être HT ou TTC
+                    # Pour Internet, le prix_unitaire stocké est TTC
                     # Pour les factures internet, le prix affiché est TTC et on doit calculer le HT en divisant par 1.20
                     if data.get('type') == 'internet':
                         # Pour les factures internet, nous avons maintenant directement le prix TTC extrait
-                        # - prix1 est directement le prix TTC
+                        # - prix1 doit etre le prix HT
                         # - ht1 est prix1/1.20
                         # - tva1 est la différence entre prix1 et ht1
 
                         # Utiliser le prix TTC extrait directement
-                        if 'prix_ttc' in article:
-                            prix_unitaire_ttc = article.get('prix_ttc', 0)
-                        else:
-                            # Calculer le prix TTC à partir du prix HT si non disponible
-                            prix_unitaire_ttc = prix_unitaire * (1 + taux_tva_decimal)
+                        prix_articles_ttc = article.get('prix_ttc', 0)
+                        if prix_articles_ttc == 0:
+                            # Si pas de prix TTC, utiliser le prix unitaire (qui est TTC pour les factures internet)
+                            prix_articles_ttc = prix_unitaire
 
-                        # Le prix à afficher dans Excel est le prix TTC
-                        prix_pour_excel = prix_unitaire_ttc
-
-                        # Le montant HT est le prix TTC divisé par 1.20
+                        # Le prix TTC est pour la totalité des articles, donc il faut d'abord diviser par la quantité
+                        prix_unitaire_ttc = prix_articles_ttc / quantite
+                        # Puis calculer le prix unitaire HT en divisant par 1.20
                         prix_unitaire_ht = prix_unitaire_ttc / 1.20
+                        prix_pour_excel = prix_unitaire_ht
                         montant_ht = prix_unitaire_ht * quantite
 
-                        # La TVA est la différence entre le prix TTC et le HT
-                        tva_euros = (prix_unitaire_ttc - prix_unitaire_ht) * quantite
+                        # La TVA est la différence entre le TTC et le HT
+                        tva_euros = montant_ht * 0.20
 
-                        print(f"  Article {article.get('reference', '')}: prix TTC={prix_unitaire_ttc}, HT={prix_unitaire_ht}, TVA={prix_unitaire_ttc - prix_unitaire_ht}")
+                        print(f"  Article {article.get('reference', '')}: prix unitaire TTC={prix_unitaire_ttc}, HT={prix_unitaire_ht}, montant total HT={montant_ht}, TVA={tva_euros}")
                     else:  # acompte
                         # Pour les factures d'acompte, le calcul reste standard
                         # Calculer montant HT si non disponible
@@ -517,14 +516,14 @@ def create_invoice_dataframe(invoices_data):
                         prix_unitaire_ttc = prix_unitaire * (1 + taux_tva_decimal)
                         montant_ttc = montant_ht * (1 + taux_tva_decimal)
                         tva_euros = montant_ht * taux_tva_decimal
-                        prix_pour_excel = prix_unitaire_ttc
+                        prix_pour_excel = prix_unitaire
 
                 # S'assurer que prix unitaire et montant HT sont cohérents mais distincts
                 if montant_ht == prix_unitaire and quantite > 1:
                     # Si les valeurs sont identiques alors que la quantité est > 1, c'est une erreur
                     prix_unitaire = montant_ht / quantite
                     prix_unitaire_ttc = prix_unitaire * (1 + taux_tva_decimal)
-                    prix_pour_excel = prix_unitaire_ttc if data.get('type') == 'internet' else prix_unitaire
+                    prix_pour_excel = prix_unitaire_ht if data.get('type') == 'internet' else prix_unitaire
                     print(f"  Correction prix unitaire pour article {article_index} ({article.get('reference', '')}): {prix_pour_excel}")
 
                 row[f'supfam{article_index}'] = ''
