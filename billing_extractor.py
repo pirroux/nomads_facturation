@@ -48,37 +48,190 @@ class InvoiceExtractor:
                     amounts['type_expedition'] = type_expedition
 
         elif invoice_type == 'meg':
-            # Patterns pour facture MEG
-            total_ht_pattern = r'Total HT\s+([\d\s]+[,.]?\d*)\s*€'
+            # Patterns spécifiques pour les totaux dans les factures MEG
+            total_ht_pattern = r'Total\s+HT\s+([\d\s]+[,.]?\d*)\s*€'
             tva_pattern = r'TVA\s+([\d\s]+[,.]?\d*)\s*€'
-            total_ttc_pattern = r'Total TTC\s+([\d\s]+[,.]?\d*)\s*€'
-            acompte_pattern = r'Acompte\(s\) reçu\(s\) HT\s+([\d\s]+[,.]?\d*)\s*€'
+            total_ttc_pattern = r'Total\s+TTC\s+([\d\s]+[,.]?\d*)\s*€'
 
-            # Extraction total HT
-            total_ht_match = re.search(total_ht_pattern, text)
-            if total_ht_match:
-                amounts['total_ht'] = self.convert_to_float(total_ht_match.group(1))
+            # Vérifier si c'est une facture multi-pages
+            page_indicators = re.findall(r'Page\s+(\d+)\s+de\s+(\d+)', text)
+            is_multipage = len(page_indicators) > 0
 
-            # Extraction TVA
-            tva_match = re.search(tva_pattern, text)
-            if tva_match:
-                amounts['tva'] = self.convert_to_float(tva_match.group(1))
+            # Si c'est une facture multi-pages, essayer une approche de page par page
+            if is_multipage:
+                print(f"Facture multi-pages détectée: {len(page_indicators)} indicateurs de page trouvés")
 
-            # Extraction total TTC
-            total_ttc_match = re.search(total_ttc_pattern, text)
-            if total_ttc_match:
-                amounts['total_ttc'] = self.convert_to_float(total_ttc_match.group(1))
+                # Diviser par les indicateurs "Page X de Y"
+                pages = []
+                last_pos = 0
 
-            # Extraction acompte
-            acompte_match = re.search(acompte_pattern, text)
-            if acompte_match:
-                amounts['acompte'] = self.convert_to_float(acompte_match.group(1))
+                # Trouver chaque début de page en utilisant le motif "Page X de Y"
+                page_positions = [(m.start(), m.group()) for m in re.finditer(r'Page\s+\d+\s+de\s+\d+', text)]
+
+                if page_positions:
+                    # Ajouter tout ce qui précède la première occurrence comme page 1
+                    if page_positions[0][0] > 0:
+                        pages.append(text[:page_positions[0][0]])
+
+                    # Diviser le reste du texte par les indicateurs de page
+                    for i in range(len(page_positions)):
+                        start = page_positions[i][0] + len(page_positions[i][1])
+                        end = page_positions[i+1][0] if i+1 < len(page_positions) else len(text)
+                        pages.append(text[start:end])
+
+                    # Chercher d'abord les montants dans la dernière page ou l'avant-dernière
+                    # (car les totaux sont souvent là)
+                    for page_index in range(len(pages)-1, -1, -1):
+                        page_content = pages[page_index]
+
+                        # Chercher la section "Détail de la TVA" dans cette page
+                        if 'Détail de la TVA' in page_content:
+                            section = page_content.split('Détail de la TVA')[1]
+
+                            # Extraction total HT
+                            total_ht_match = re.search(total_ht_pattern, section)
+                            if total_ht_match:
+                                amounts['total_ht'] = self.convert_to_float(total_ht_match.group(1))
+
+                            # Extraction TVA
+                            tva_match = re.search(tva_pattern, section)
+                            if tva_match:
+                                amounts['tva'] = self.convert_to_float(tva_match.group(1))
+
+                            # Extraction total TTC
+                            total_ttc_match = re.search(total_ttc_pattern, section)
+                            if total_ttc_match:
+                                amounts['total_ttc'] = self.convert_to_float(total_ttc_match.group(1))
+
+                            # Si on a trouvé tous les montants, on peut sortir
+                            if amounts['total_ht'] > 0 and amounts['tva'] > 0 and amounts['total_ttc'] > 0:
+                                print("Tous les montants trouvés, arrêt de la recherche page par page")
+                                break
+
+                        # Si on n'a pas trouvé la section "Détail de la TVA", chercher directement les montants
+                        else:
+                            # Extraction total HT
+                            if amounts['total_ht'] == 0:
+                                total_ht_match = re.search(total_ht_pattern, page_content)
+                                if total_ht_match:
+                                    amounts['total_ht'] = self.convert_to_float(total_ht_match.group(1))
+
+                            # Extraction TVA
+                            if amounts['tva'] == 0:
+                                tva_match = re.search(tva_pattern, page_content)
+                                if tva_match:
+                                    amounts['tva'] = self.convert_to_float(tva_match.group(1))
+
+                            # Extraction total TTC
+                            if amounts['total_ttc'] == 0:
+                                total_ttc_match = re.search(total_ttc_pattern, page_content)
+                                if total_ttc_match:
+                                    amounts['total_ttc'] = self.convert_to_float(total_ttc_match.group(1))
+
+            # Si ce n'est pas une facture multi-pages ou si l'approche par page n'a pas fonctionné,
+            # essayer avec l'approche originale améliorée (texte entier)
+            if amounts['total_ht'] == 0 or amounts['tva'] == 0 or amounts['total_ttc'] == 0:
+                # Pour les factures multi-pages, s'assurer que les recherches sont indépendantes des sauts de ligne
+                processed_text = text.replace('\n\n', ' ')
+
+                # Chercher d'abord dans la section "Détail de la TVA"
+                detail_tva_section = None
+                if 'Détail de la TVA' in processed_text:
+                    # Diviser le texte à "Détail de la TVA" et prendre tout ce qui suit
+                    sections = processed_text.split('Détail de la TVA')
+                    if len(sections) > 1:
+                        detail_tva_section = sections[1]
+
+                # Si on a trouvé la section, chercher les montants dedans
+                if detail_tva_section:
+                    # Extraction total HT si pas encore trouvé
+                    if amounts['total_ht'] == 0:
+                        total_ht_match = re.search(total_ht_pattern, detail_tva_section)
+                        if total_ht_match:
+                            amounts['total_ht'] = self.convert_to_float(total_ht_match.group(1))
+
+                    # Extraction TVA si pas encore trouvé
+                    if amounts['tva'] == 0:
+                        tva_match = re.search(tva_pattern, detail_tva_section)
+                        if tva_match:
+                            amounts['tva'] = self.convert_to_float(tva_match.group(1))
+
+                    # Extraction total TTC si pas encore trouvé
+                    if amounts['total_ttc'] == 0:
+                        total_ttc_match = re.search(total_ttc_pattern, detail_tva_section)
+                        if total_ttc_match:
+                            amounts['total_ttc'] = self.convert_to_float(total_ttc_match.group(1))
+                else:
+                    # Si on n'a pas trouvé la section, chercher dans tout le texte
+
+                    # Extraction total HT si pas encore trouvé
+                    if amounts['total_ht'] == 0:
+                        total_ht_match = re.search(total_ht_pattern, processed_text)
+                        if total_ht_match:
+                            amounts['total_ht'] = self.convert_to_float(total_ht_match.group(1))
+
+                    # Extraction TVA si pas encore trouvé
+                    if amounts['tva'] == 0:
+                        tva_match = re.search(tva_pattern, processed_text)
+                        if tva_match:
+                            amounts['tva'] = self.convert_to_float(tva_match.group(1))
+
+                    # Extraction total TTC si pas encore trouvé
+                    if amounts['total_ttc'] == 0:
+                        total_ttc_match = re.search(total_ttc_pattern, processed_text)
+                        if total_ttc_match:
+                            amounts['total_ttc'] = self.convert_to_float(total_ttc_match.group(1))
+
+            # Si on n'a pas trouvé les totaux, essayer avec d'autres patterns plus flexibles
+            if amounts['total_ht'] == 0 or amounts['tva'] == 0 or amounts['total_ttc'] == 0:
+                # Patterns alternatifs qui fonctionnent même avec des sauts de page/ligne
+                alt_total_ht_pattern = r'(?:Total|Montant)\s+(?:HT|H\.T\.)\D*([\d\s]+[,.]?\d*)\s*€'
+                alt_tva_pattern = r'(?:TVA|T\.V\.A\.)\D*([\d\s]+[,.]?\d*)\s*€'
+                alt_total_ttc_pattern = r'(?:Total|Montant)\s+(?:TTC|T\.T\.C\.)\D*([\d\s]+[,.]?\d*)\s*€'
+
+                if amounts['total_ht'] == 0:
+                    alt_match = re.search(alt_total_ht_pattern, text, re.IGNORECASE)
+                    if alt_match:
+                        amounts['total_ht'] = self.convert_to_float(alt_match.group(1))
+
+                if amounts['tva'] == 0:
+                    alt_match = re.search(alt_tva_pattern, text, re.IGNORECASE)
+                    if alt_match:
+                        amounts['tva'] = self.convert_to_float(alt_match.group(1))
+
+                if amounts['total_ttc'] == 0:
+                    alt_match = re.search(alt_total_ttc_pattern, text, re.IGNORECASE)
+                    if alt_match:
+                        amounts['total_ttc'] = self.convert_to_float(alt_match.group(1))
+
+            # Vérifications et calculs
+            if amounts['total_ht'] > 0 and amounts['tva'] > 0 and amounts['total_ttc'] == 0:
+                amounts['total_ttc'] = amounts['total_ht'] + amounts['tva']
+                print(f"Total TTC calculé: {amounts['total_ttc']} €")
+            elif amounts['total_ttc'] > 0 and amounts['tva'] > 0 and amounts['total_ht'] == 0:
+                amounts['total_ht'] = amounts['total_ttc'] - amounts['tva']
+                print(f"Total HT calculé: {amounts['total_ht']} €")
+            elif amounts['total_ttc'] > 0 and amounts['total_ht'] > 0 and amounts['tva'] == 0:
+                amounts['tva'] = amounts['total_ttc'] - amounts['total_ht']
+                print(f"TVA calculée: {amounts['tva']} €")
 
         # Recherche d'une remise totale
-        remise_pattern = r'Remise\s+(?:totale|globale)?\s*:?\s*(\d+[.,]?\d*)\s*[€%]'
-        remise_match = re.search(remise_pattern, text, re.IGNORECASE)
-        if remise_match:
-            amounts['remise'] = self.convert_to_float(remise_match.group(1))
+        remise_patterns = [
+            r'Remise\s+(?:totale|globale)?\s*:?\s*(-?\d+[.,]?\d*)\s*[€%]',
+            r'Remise\s+(-?\d+[.,]?\d*)\s*[€%]',
+            r'Total\s+remise\s*:?\s*(-?\d+[.,]?\d*)\s*[€%]'
+        ]
+
+        # Pour les remises, chercher dans tout le texte
+        for pattern in remise_patterns:
+            remise_match = re.search(pattern, text, re.IGNORECASE)
+            if remise_match:
+                # Convertir la valeur de remise en float
+                remise_value = self.convert_to_float(remise_match.group(1))
+                # S'assurer que la remise est toujours positive, même si elle est négative dans la facture
+                amounts['remise'] = abs(remise_value)
+                print(f"Remise trouvée: {amounts['remise']}")
+                break
 
         return amounts
 
@@ -152,7 +305,7 @@ class InvoiceExtractor:
                         })
                         current_code = ""  # Réinitialise le code pour le prochain article
                     except (ValueError, IndexError) as e:
-                        print(f"Erreur lors de l'extraction d'un article internet: {e}")
+                        # Exception silencieuse
                         continue
 
         elif invoice_type == 'meg':
@@ -181,7 +334,7 @@ class InvoiceExtractor:
                         'tva': float(match.group(7).replace(',', '.'))
                     })
                 except (IndexError, ValueError) as e:
-                    print(f"Erreur lors de l'extraction d'un article MEG: {e}")
+                    # Exception silencieuse
                     continue
 
         return articles
@@ -299,5 +452,3 @@ class InvoiceExtractor:
             "invoice_data": data,
             "extraction_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-
-    # ... rest of the existing code ...
