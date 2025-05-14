@@ -442,7 +442,14 @@ def create_invoice_dataframe(invoices_data):
             row['tva'] = taux_tva
             row['ttc'] = ''
             row['Credit TTC'] = total_ttc
-            row['Credit HT'] = total_ht_avec_remise  # Utiliser le total HT avec remise
+            # Utiliser le taux de TVA spécifique pour calculer le Credit HT
+            if data.get('type') == 'meg' and articles:
+                # Pour MEG, utiliser le taux de TVA du premier article
+                taux_tva_article = articles[0].get('tva', 20) / 100  # Par défaut 20% si non trouvé
+                row['Credit HT'] = round(total_ttc / (1 + taux_tva_article), 2)
+            else:
+                # Pour les autres types, utiliser le taux_tva_decimal calculé précédemment
+                row['Credit HT'] = round(total_ttc / (1 + taux_tva_decimal), 2)
             row['TVA Collectee'] = tva_value
 
             # Remplir les articles
@@ -464,7 +471,8 @@ def create_invoice_dataframe(invoices_data):
                 if data.get('type') == 'meg':
                     # Pour MEG, calcul basé sur le taux de TVA de l'article
                     taux_tva_decimal_article = article.get('tva', 0) / 100
-                    # ici prix_unitaire est déjà HT
+                    # Pour MEG, le prix_unitaire est déjà HT, donc on l'utilise directement
+                    prix_pour_excel = prix_unitaire
                     tva_euros = montant_ht * taux_tva_decimal_article
 
                     # Pour les factures MEG, si une remise est détectée, calculer la valeur en euros basée sur le prix HT
@@ -472,13 +480,6 @@ def create_invoice_dataframe(invoices_data):
                         remise_pourcentage = article.get('remise', 0)  # Déjà en décimal (exemple: 0.10 pour 10%)
                         article_remise = prix_unitaire * remise_pourcentage * quantite  # Remise en euros sur le montant HT
                         print(f"  MEG: Remise de {remise_pourcentage*100}% sur article {article.get('reference', '')}: {article_remise} € (calculée sur le prix HT {prix_unitaire} €)")
-
-                        # Quand une remise est détectée, prix1 doit être montant_ht  (somme exacte)
-                        prix_pour_excel = montant_ht / quantite
-                    else:
-                        # Quand pas de remise, calcul standard
-                        #prix_unitaire_ttc = prix_unitaire * (1 + taux_tva_decimal_article)
-                        prix_pour_excel = prix_unitaire
 
                     print(f"  MEG: prix unitaire HT={prix_unitaire}, TVA={taux_tva_decimal_article*100}%, prix affiché={prix_pour_excel}")
 
