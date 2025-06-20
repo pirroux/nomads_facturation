@@ -11,7 +11,7 @@ from data_extractor import extract_data
 
 def process_pdf_files():
     """Traite tous les PDF dans le folder et génère factures.json"""
-    pdf_folder = Path("data_factures/facturesv7")
+    pdf_folder = Path("data_factures/facturesv8")
     output_file = Path("factures.json")
 
     # Vérifier si le dossier existe

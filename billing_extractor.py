@@ -25,7 +25,7 @@ class InvoiceExtractor:
         if invoice_type == 'internet':
             # Patterns plus précis pour factures internet
             total_pattern = r'Total\s+([\d\s]+[,.]?\d*)\s*€\s*\(dont\s+([\d\s]+[,.]?\d*)\s*€\s*TVA\)'
-            expedition_pattern = r'Expédition\s+(?:([^€\n]*?)(?:(\d+[,.]?\d*)\s*€)?)?\s*(?:\(TTC\))?\s*(?:via\s*)?([^\n]*?)(?=\s*(?:Total|$))'
+            expedition_pattern = r'Expédition\s+(?:([^€\n]*?)(?:([\d\s]+[,.]?\d*)\s*€)?)?\s*(?:\(TTC\))?\s*(?:via\s*)?([^\n]*?)(?=\s*(?:Total|$))'
 
             # Extraction total TTC et TVA
             total_match = re.search(total_pattern, text, re.IGNORECASE)
@@ -217,9 +217,9 @@ class InvoiceExtractor:
 
         # Recherche d'une remise totale
         remise_patterns = [
-            r'Remise\s+(?:totale|globale)?\s*:?\s*(-?\d+[.,]?\d*)\s*[€%]',
-            r'Remise\s+(-?\d+[.,]?\d*)\s*[€%]',
-            r'Total\s+remise\s*:?\s*(-?\d+[.,]?\d*)\s*[€%]'
+            r'Remise\s+(?:totale|globale)?\s*:?\s*(-?[\d\s]+[.,]?\d*)\s*[€%]',
+            r'Remise\s+(-?[\d\s]+[.,]?\d*)\s*[€%]',
+            r'Total\s+remise\s*:?\s*(-?[\d\s]+[.,]?\d*)\s*[€%]'
         ]
 
         # Pour les remises, chercher dans tout le texte
@@ -286,7 +286,7 @@ class InvoiceExtractor:
                     continue
 
                 # Cherche un nombre (quantité) et un prix dans la ligne
-                quantite_match = re.search(r'\s(\d+)\s+(\d+[,.]?\d*)\s*€', line)
+                quantite_match = re.search(r'\s([\d\s]+)\s+([\d\s]+[,.]?\d*)\s*€', line)
 
                 if quantite_match:
                     try:
@@ -312,26 +312,30 @@ class InvoiceExtractor:
             # Pattern pour les articles MEG (code existant)
             article_pattern = (
                 r'ART(\d+)\s*-\s*([^\n]+?)\s*'  # Référence et description
-                r'(\d+,\d+)\s*'                 # Quantité
-                r'(\d+[\s\d]*,\d+)\s*€\s*'      # Prix unitaire
-                r'(\d+,\d+)%\s*'                # Remise
-                r'(\d+[\s\d]*,\d+)\s*€\s*'      # Montant HT
-                r'(\d+,\d+)%'                   # TVA
+                r'([\d\s]+,\d+)\s*'                 # Quantité
+                r'([\d\s]+[\s\d]*,\d+)\s*€\s*'      # Prix unitaire
+                r'([\d\s]+,\d+)%\s*'                # Remise
+                r'([\d\s]+[\s\d]*,\d+)\s*€\s*'      # Montant HT
+                r'([\d\s]+,\d+)%'                   # TVA
             )
 
             for match in re.finditer(article_pattern, text, re.MULTILINE | re.DOTALL):
                 try:
-                    prix_unitaire = match.group(4).replace(' ', '')
-                    montant_ht = match.group(6).replace(' ', '')
+                    # Nettoyer les espaces dans tous les nombres capturés
+                    quantite = float(match.group(3).replace(' ', '').replace(',', '.'))
+                    prix_unitaire = float(match.group(4).replace(' ', '').replace(',', '.'))
+                    remise = float(match.group(5).replace(' ', '').replace(',', '.')) / 100
+                    montant_ht = float(match.group(6).replace(' ', '').replace(',', '.'))
+                    tva = float(match.group(7).replace(' ', '').replace(',', '.'))
 
                     articles.append({
                         'reference': f"ART{match.group(1)}",
                         'description': match.group(2).strip(),
-                        'quantite': float(match.group(3).replace(',', '.')),
-                        'prix_unitaire': float(prix_unitaire.replace(',', '.')),
-                        'remise': float(match.group(5).replace(',', '.')) / 100,
-                        'montant_ht': float(montant_ht.replace(',', '.')),
-                        'tva': float(match.group(7).replace(',', '.'))
+                        'quantite': quantite,
+                        'prix_unitaire': prix_unitaire,
+                        'remise': remise,
+                        'montant_ht': montant_ht,
+                        'tva': tva
                     })
                 except (IndexError, ValueError) as e:
                     # Exception silencieuse
