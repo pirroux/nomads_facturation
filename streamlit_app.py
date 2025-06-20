@@ -1,11 +1,14 @@
 import streamlit as st
 import os
-from create_invoice_excel import create_excel_from_data, load_invoice_data, create_invoice_dataframe, format_excel
+from create_invoice_excel import create_invoice_dataframe, format_excel
 import pandas as pd
 from datetime import datetime
 import pytz
 import json
 from pathlib import Path
+from pdf_extractor import extract_text_from_pdf
+from data_extractor import extract_data
+import tempfile
 
 # Set page configuration (must be the first Streamlit command)
 st.set_page_config(
@@ -31,42 +34,78 @@ if uploaded_files:
     if st.button("Analyser"):
         try:
             with st.spinner("🔄 Analyse en cours..."):
-                # Sauvegarder les fichiers PDF dans le dossier data_factures/facturesv7 (même dossier que dans le script principal)
-                os.makedirs('data_factures/facturesv7', exist_ok=True)
-                for file in uploaded_files:
-                    with open(f'data_factures/facturesv7/{file.name}', 'wb') as f:
-                        f.write(file.getvalue())
+                # Traiter directement les fichiers uploadés sans les sauvegarder
+                all_invoices_data = {}
 
-                # Force la régénération du fichier factures.json
-                json_path = Path('factures.json')
-                if json_path.exists():
-                    json_path.unlink()
+                for uploaded_file in uploaded_files:
+                    try:
+                        # Créer un fichier temporaire pour l'extraction
+                        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+                            tmp_file.write(uploaded_file.getvalue())
+                            tmp_path = tmp_file.name
 
-                # Charger les données des factures
-                all_invoices_data = load_invoice_data()
+                        # Extraire le texte du PDF
+                        pages_text = extract_text_from_pdf(tmp_path)
+                        if not pages_text:
+                            st.error(f"Impossible d'extraire le texte de {uploaded_file.name}")
+                            continue
 
-                # Filtrer uniquement les fichiers uploadés
-                uploaded_filenames = [f.name for f in uploaded_files]
-                filtered_invoices_data = {}
+                        # Fusionner le texte de toutes les pages
+                        combined_text = "\n\n".join(pages_text)
 
-                # Parcourir toutes les factures et les ajouter si elles correspondent aux fichiers uploadés
-                for filename, data in all_invoices_data.items():
-                    # Vérifier si le nom de fichier commence par un des noms de fichiers uploadés
-                    for uploaded_filename in uploaded_filenames:
-                        if filename.startswith(uploaded_filename):
-                            filtered_invoices_data[filename] = data
+                        # Déterminer le type de facture
+                        is_internet = "UGS" in combined_text
+                        is_acompte = "Facture d'acompte" in combined_text
 
-                            # Correction spécifique pour les factures 990 et 994
-                            if "FAC00000990" in filename or "FAC00000994" in filename:
-                                total_ttc = data.get('data', {}).get('TOTAL', {}).get('total_ttc', 0)
-                                if total_ttc > 0:
-                                    st.info(f"Correction appliquée pour la facture {filename}: solde = {total_ttc} €")
-                            break
+                        if is_internet:
+                            facture_type = "internet"
+                        elif is_acompte:
+                            facture_type = "acompte"
+                        else:
+                            facture_type = "meg"
+
+                        # Extraire les données structurées
+                        extracted_data = extract_data(combined_text, facture_type)
+
+                        # Structure de base pour les données
+                        data = {
+                            'type': facture_type,
+                            'articles': extracted_data.get('articles', []),
+                            'TOTAL': extracted_data.get('TOTAL', {
+                                'total_ht': 0,
+                                'total_ttc': 0,
+                                'tva': 0,
+                                'remise': 0
+                            }),
+                            'client_name': extracted_data.get('client_name', ''),
+                            'numero_facture': extracted_data.get('numero_facture', ''),
+                            'date_facture': extracted_data.get('date_facture', ''),
+                            'date_commande': extracted_data.get('date_commande', ''),
+                            'commentaire': extracted_data.get('commentaire', ''),
+                            'Type_Vente': extracted_data.get('Type_Vente', ''),
+                            'Réseau_Vente': extracted_data.get('Réseau_Vente', ''),
+                            'nombre_articles': len(extracted_data.get('articles', []))
+                        }
+
+                        # Ajouter au dictionnaire principal
+                        all_invoices_data[uploaded_file.name] = {
+                            'text': combined_text,
+                            'data': data
+                        }
+
+                        st.success(f"✓ {uploaded_file.name} traité avec succès")
+
+                        # Nettoyer le fichier temporaire
+                        os.unlink(tmp_path)
+
+                    except Exception as e:
+                        st.error(f"Erreur lors du traitement de {uploaded_file.name}: {str(e)}")
+                        continue
 
                 # Vérifier si des données ont été trouvées
-                if filtered_invoices_data:
+                if all_invoices_data:
                     try:
-                        df = create_invoice_dataframe(filtered_invoices_data)
+                        df = create_invoice_dataframe(all_invoices_data)
 
                         if not df.empty:
                             # Correction spécifique pour les factures 990 et 994 dans le DataFrame
@@ -95,7 +134,7 @@ if uploaded_files:
                                 excel_data = f.read()
 
                             st.success(f"📂 Fichier Excel créé avec succès ! 🤙")
-                            st.write(f"Nombre de factures traitées : {len(filtered_invoices_data)}")
+                            st.write(f"Nombre de factures traitées : {len(all_invoices_data)}")
 
                             st.download_button(
                                 label=f"📎 Télécharger {filename}",
@@ -107,9 +146,9 @@ if uploaded_files:
                             st.error("Le DataFrame généré est vide. Veuillez vérifier les données.")
                     except Exception as e:
                         st.error(f"Erreur lors de la création du fichier Excel : {str(e)}")
-                        st.write("Données filtrées :", filtered_invoices_data)
+                        st.write("Données extraites :", all_invoices_data)
                 else:
-                    st.error("Aucune donnée trouvée pour les fichiers uploadés. Veuillez réessayer.")
+                    st.error("Aucune donnée extraite des fichiers uploadés. Veuillez réessayer.")
 
         except Exception as e:
             st.error(f"🚨 Une erreur est survenue : {str(e)}")
