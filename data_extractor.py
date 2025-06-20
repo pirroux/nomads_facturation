@@ -238,17 +238,17 @@ def extract_data(text: str, type: str = 'meg') -> dict:
                 print(f"  Client meg: {data['client_name']}")
 
             # Extraction des totaux
-            total_ht_match = re.search(r'Total HT\s+(\d+[.,]\d{2})\s*€', text)
+            total_ht_match = re.search(r'Total HT\s+([\d\s]+[.,]\d{2})\s*€', text)
             if total_ht_match:
                 data['TOTAL']['total_ht'] = convert_to_float(total_ht_match.group(1))
                 print(f"  Total HT meg: {data['TOTAL']['total_ht']}")
 
-            tva_match = re.search(r'TVA\s+(\d+[.,]\d{2})\s*€', text)
+            tva_match = re.search(r'TVA\s+([\d\s]+[.,]\d{2})\s*€', text)
             if tva_match:
                 data['TOTAL']['tva'] = convert_to_float(tva_match.group(1))
                 print(f"  TVA meg: {data['TOTAL']['tva']}")
 
-            total_ttc_match = re.search(r'Total TTC\s+(\d+[.,]\d{2})\s*€', text)
+            total_ttc_match = re.search(r'Total TTC\s+([\d\s]+[.,]\d{2})\s*€', text)
             if total_ttc_match:
                 data['TOTAL']['total_ttc'] = convert_to_float(total_ttc_match.group(1))
                 print(f"  Total TTC meg: {data['TOTAL']['total_ttc']}")
