@@ -152,7 +152,7 @@ def extract_data(text: str, type: str = 'meg') -> dict:
                         print(f"  Numéro de commande: {data['numero_commande']}")
 
             # Extraction du total
-            total_match = re.search(r'Total\s+(\d+[.,]\d{2})\s*€\s*\(dont\s+(\d+[.,]\d{2})\s*€\s*TVA\)', text)
+            total_match = re.search(r'Total\s+([\d\s]+[.,]\d{2})\s*€\s*\(dont\s+([\d\s]+[.,]\d{2})\s*€\s*TVA\)', text)
             if total_match:
                 data['TOTAL']['total_ttc'] = convert_to_float(total_match.group(1))
                 data['TOTAL']['tva'] = convert_to_float(total_match.group(2))
@@ -161,10 +161,10 @@ def extract_data(text: str, type: str = 'meg') -> dict:
 
             # Extraction des remises
             remise_patterns = [
-                r'Remise\s+(-?\d+[.,]\d{2})\s*€',
+                r'Remise\s+(-?[\d\s]+[.,]\d{2})\s*€',
                 r'Remise\s+(-?\d+)\s*%',
                 r'Remise\s+(-?\d+)',
-                r'Remise\s+totale\s*:?\s*(-?\d+[.,]\d{2})\s*€'
+                r'Remise\s+totale\s*:?\s*(-?[\d\s]+[.,]\d{2})\s*€'
             ]
 
             for pattern in remise_patterns:
@@ -184,11 +184,11 @@ def extract_data(text: str, type: str = 'meg') -> dict:
 
             # Extraction des frais d'expédition
             expedition_patterns = [
-                r'Expédition\s+(\d+[.,]\d{2})\s*€\s*(?:\(TTC\))?\s*via\s+([^\n]+)',
-                r'Livraison\s+(\d+[.,]\d{2})\s*€\s*(?:\(TTC\))?\s*via\s+([^\n]+)',
-                r'Frais\s+d[e\']expédition\s+(\d+[.,]\d{2})\s*€\s*(?:\(TTC\))?\s*via\s+([^\n]+)',
-                r'Expédition\s+(\d+[.,]\d{2})\s*€\s*(?:\(TTC\))?',
-                r'Livraison\s+(\d+[.,]\d{2})\s*€\s*(?:\(TTC\))?'
+                r'Expédition\s+([\d\s]+[.,]\d{2})\s*€\s*(?:\(TTC\))?\s*via\s+([^\n]+)',
+                r'Livraison\s+([\d\s]+[.,]\d{2})\s*€\s*(?:\(TTC\))?\s*via\s+([^\n]+)',
+                r'Frais\s+d[e\']expédition\s+([\d\s]+[.,]\d{2})\s*€\s*(?:\(TTC\))?\s*via\s+([^\n]+)',
+                r'Expédition\s+([\d\s]+[.,]\d{2})\s*€\s*(?:\(TTC\))?',
+                r'Livraison\s+([\d\s]+[.,]\d{2})\s*€\s*(?:\(TTC\))?'
             ]
 
             expedition_gratuite_patterns = [
@@ -512,16 +512,16 @@ def extract_articles(text: str, is_meg: bool) -> List[Dict]:
         # Extraire les prix TTC qui peuvent être directement indiqués dans la facture
         # Patterns pour trouver le prix TTC directement
         price_patterns = [
-            r'Prix\s*:\s*(\d+[,.]\d{2})\s*€',
-            r'Prix\s*unitaire\s*:\s*(\d+[,.]\d{2})\s*€',
-            r'Prix\s*TTC\s*:\s*(\d+[,.]\d{2})\s*€'
+            r'Prix\s*:\s*([\d\s]+[,.]\d{2})\s*€',
+            r'Prix\s*unitaire\s*:\s*([\d\s]+[,.]\d{2})\s*€',
+            r'Prix\s*TTC\s*:\s*([\d\s]+[,.]\d{2})\s*€'
         ]
 
         # Extraire les totaux pour calculer la répartition si nécessaire
         total_ttc = 0
         total_ht = 0
 
-        total_match = re.search(r'Total\s+(\d+[.,]\d{2})\s*€\s*\(dont\s+(\d+[.,]\d{2})\s*€\s*TVA\)', text)
+        total_match = re.search(r'Total\s+([\d\s]+[.,]\d{2})\s*€\s*\(dont\s+([\d\s]+[.,]\d{2})\s*€\s*TVA\)', text)
         if total_match:
             total_ttc = convert_to_float(total_match.group(1))
             total_tva = convert_to_float(total_match.group(2))
@@ -532,7 +532,7 @@ def extract_articles(text: str, is_meg: bool) -> List[Dict]:
         total_articles = len(list(re.finditer(article_pattern, text, re.MULTILINE)))
 
         # Version simplifiée du pattern pour trouver prix et quantité dans la même ligne
-        direct_price_pattern = r'(?:Produits|Article)[^\n]*?(?:Quantité|Qté)[^\n]*?Prix[^\n]*\n([^\n]+)\s+(\d+)\s+(\d+[,.]\d+)\s*€'
+        direct_price_pattern = r'(?:Produits|Article)[^\n]*?(?:Quantité|Qté)[^\n]*?Prix[^\n]*\n([^\n]+)\s+(\d+)\s+([\d\s]+[,.]\d+)\s*€'
         direct_matches = re.finditer(direct_price_pattern, text, re.MULTILINE)
         direct_prices = {}
 
@@ -561,7 +561,7 @@ def extract_articles(text: str, is_meg: bool) -> List[Dict]:
                 prix_ttc = 0
 
                 # Nettoyage de la description - séparer la description du prix et de la quantité
-                qty_price_match = re.search(r'([^\d]+)\s+(\d+)\s+(\d+[,.]\d+)\s*€', description)
+                qty_price_match = re.search(r'([^\d]+)\s+(\d+)\s+([\d\s]+[,.]\d+)\s*€', description)
                 if qty_price_match:
                     clean_description = qty_price_match.group(1).strip()
                     extracted_qty = int(qty_price_match.group(2))
@@ -616,7 +616,7 @@ def extract_articles(text: str, is_meg: bool) -> List[Dict]:
 
                     # Si toujours pas de prix, chercher un simple nombre suivi de €
                     if prix_ttc == 0:
-                        prix_simple_match = re.search(r'(\d+[,.]\d+)\s*€', article_text)
+                        prix_simple_match = re.search(r'([\d\s]+[,.]\d+)\s*€', article_text)
                         if prix_simple_match:
                             prix_ttc = convert_to_float(prix_simple_match.group(1))
                             print(f"  Prix TTC extrait pour {reference}: {prix_ttc} €")
@@ -633,8 +633,8 @@ def extract_articles(text: str, is_meg: bool) -> List[Dict]:
                 # Chercher aussi les remises spécifiques à cet article
                 remise_article = 0
                 remise_article_patterns = [
-                    r'Remise.*?article.*?:\s*(-?\d+[,.]\d+)\s*€',
-                    r'Remise\s*:\s*(-?\d+[,.]\d+)\s*€'
+                    r'Remise.*?article.*?:\s*(-?[\d\s]+[,.]\d+)\s*€',
+                    r'Remise\s*:\s*(-?[\d\s]+[,.]\d+)\s*€'
                 ]
 
                 for r_pattern in remise_article_patterns:
