@@ -430,7 +430,7 @@ def create_invoice_dataframe(invoices_data):
                         print(f"Solde obtenu depuis data.TOTAL.total_ttc pour {filename}: {row['solde']}")
                     else:
                         row['solde'] = 0.0
-                        print(f"Attention: Pas de solde trouvé pour {filename}")
+                    print(f"Attention: Pas de solde trouvé pour {filename}")
 
             row['contrôle paiement'] = data.get('statut_paiement', '')
             # Assurez-vous que reste dû est un float
@@ -553,11 +553,6 @@ def create_invoice_dataframe(invoices_data):
                     # Pour Internet, le prix_unitaire stocké est TTC
                     # Pour les factures internet, le prix affiché est TTC et on doit calculer le HT en divisant par 1.20
                     if data.get('type') == 'internet':
-                        # Pour les factures internet, nous avons maintenant directement le prix TTC extrait
-                        # - prix1 doit etre le prix HT
-                        # - ht1 est prix1/1.20
-                        # - tva1 est la différence entre prix1 et ht1
-
                         # Utiliser le prix TTC extrait directement
                         prix_articles_ttc = article.get('prix_ttc', 0)
                         if prix_articles_ttc == 0:

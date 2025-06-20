@@ -19,11 +19,11 @@ def extract_articles_and_totals(text: str) -> Dict:
     # Pattern pour les articles sous "Libellé"
     article_pattern = (
         r'ART(\d+)\s*-\s*([^\n]+?)\s*'  # Référence et description
-        r'([\d\s]+,\d+)\s*'                 # Quantité
-        r'([\d\s]+[\s\d]*,\d+)\s*€\s*'      # Prix unitaire
-        r'([\d\s]+,\d+)%\s*'                # Remise
-        r'([\d\s]+[\s\d]*,\d+)\s*€\s*'      # Montant HT
-        r'([\d\s]+,\d+)%'                   # TVA
+        r'(\d+,\d+)\s*'                 # Quantité
+        r'(\d+[\s\d]*,\d+)\s*€\s*'      # Prix unitaire
+        r'(\d+,\d+)%\s*'                # Remise
+        r'(\d+[\s\d]*,\d+)\s*€\s*'      # Montant HT
+        r'(\d+,\d+)%'                   # TVA
     )
 
     for match in re.finditer(article_pattern, text, re.MULTILINE | re.DOTALL):
@@ -275,9 +275,9 @@ def extract_data(text: str, type: str = 'meg') -> dict:
             # Différents patterns pour extraire les montants des factures d'acompte
             # 1. Extraction du total TTC
             ttc_patterns = [
-                r'TOTAL\s+(?:ACOMPTE|TTC)\s+([\d\s]+[\s\d]*[,.]\d{2})\s*€',
-                r'Total\s+TTC\s+([\d\s]+[\s\d]*[,.]\d{2})\s*€',
-                r'MONTANT\s+(?:A\s+PAYER|ACOMPTE)\s+(?:TTC)?\s*(?::\s*)?([\d\s]+[\s\d]*[,.]\d{2})\s*€'
+                r'TOTAL\s+(?:ACOMPTE|TTC)\s+(\d+[\s\d]*[,.]\d{2})\s*€',
+                r'Total\s+TTC\s+(\d+[\s\d]*[,.]\d{2})\s*€',
+                r'MONTANT\s+(?:A\s+PAYER|ACOMPTE)\s+(?:TTC)?\s*(?::\s*)?(\d+[\s\d]*[,.]\d{2})\s*€'
             ]
 
             for pattern in ttc_patterns:
@@ -289,10 +289,10 @@ def extract_data(text: str, type: str = 'meg') -> dict:
 
             # 2. Extraction de la TVA
             tva_patterns = [
-                r'dont\s+TVA\s+([\d\s]+[\s\d]*[,.]\d{2})\s*€',
-                r'T\.?V\.?A\.?\s+([\d\s]+[\s\d]*[,.]\d{2})\s*€',
-                r'TVA\s+[\d\s]+[,.]\d+%\s+([\d\s]+[\s\d]*[,.]\d{2})\s*€',
-                r'Montant\s+TVA\s+([\d\s]+[\s\d]*[,.]\d{2})\s*€'
+                r'dont\s+TVA\s+(\d+[\s\d]*[,.]\d{2})\s*€',
+                r'T\.?V\.?A\.?\s+(\d+[\s\d]*[,.]\d{2})\s*€',
+                r'TVA\s+\d+[,.]\d+%\s+(\d+[\s\d]*[,.]\d{2})\s*€',
+                r'Montant\s+TVA\s+(\d+[\s\d]*[,.]\d{2})\s*€'
             ]
 
             for pattern in tva_patterns:
@@ -304,9 +304,9 @@ def extract_data(text: str, type: str = 'meg') -> dict:
 
             # 3. Extraction du total HT
             ht_patterns = [
-                r'Total\s+HT\s+(?:ACOMPTE)?\s+([\d\s]+[\s\d]*[,.]\d{2})\s*€',
-                r'TOTAL\s+HT\s+([\d\s]+[\s\d]*[,.]\d{2})\s*€',
-                r'Montant\s+HT\s+([\d\s]+[\s\d]*[,.]\d{2})\s*€'
+                r'Total\s+HT\s+(?:ACOMPTE)?\s+(\d+[\s\d]*[,.]\d{2})\s*€',
+                r'TOTAL\s+HT\s+(\d+[\s\d]*[,.]\d{2})\s*€',
+                r'Montant\s+HT\s+(\d+[\s\d]*[,.]\d{2})\s*€'
             ]
 
             for pattern in ht_patterns:
@@ -414,49 +414,34 @@ def extract_articles(text: str, is_meg: bool) -> List[Dict]:
     """Extrait les articles du texte"""
     articles = []
     if is_meg:
-        # Pattern pour les articles MEG - plus précis pour gérer les espaces dans les milliers
+        # Pattern modifié pour accepter le format XXXX-XXXXXX-XXXX
         article_pattern = (
-            r'([A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+)\s*-([^\n]+?)\s+'  # Référence et description
-            r'([\d\s]+,\d{2})\s+'                  # Quantité (ex: 1 000,00)
-            r'([\d\s]+[\s\d]*,\d+)\s*€\s+'       # Prix unitaire (ex: 36,667 €)
-            r'([\d\s]+,\d+)%\s+'                 # Remise (ex: 18,19%)
-            r'([\d\s]+[\s\d]*,\d+)\s*€\s+'       # Montant HT (ex: 30,00 €)
-            r'([\d\s]+,\d+)%'                    # TVA (ex: 20,00%)
+            r'([A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+)\s*-([^\n]+?)\s+'  # Référence au format XXXX-XXXXXX-XXXX et description
+            r'(\d+,\d+)\s+'                  # Quantité
+            r'(\d+[\s\d]*,\d+)\s*€\s+'       # Prix unitaire
+            r'(\d+,\d+)%\s+'                 # Remise
+            r'(\d+[\s\d]*,\d+)\s*€\s+'       # Montant HT
+            r'(\d+,\d+)%'                    # TVA
         )
 
         for match in re.finditer(article_pattern, text, re.MULTILINE | re.DOTALL):
             try:
-                # Nettoyer les espaces dans tous les nombres capturés
-                quantite_str = match.group(3).replace(' ', '').replace(',', '.')
-                prix_unitaire_str = match.group(4).replace(' ', '').replace(',', '.')
-                remise_str = match.group(5).replace(' ', '').replace(',', '.')
-                montant_ht_str = match.group(6).replace(' ', '').replace(',', '.')
-                tva_str = match.group(7).replace(' ', '').replace(',', '.')
-
-                # Convertir en float
-                quantite = float(quantite_str)
-                prix_unitaire = float(prix_unitaire_str)
-                remise = float(remise_str) / 100
-                montant_ht = float(montant_ht_str)
-                tva = float(tva_str)
-
-                # Debug: afficher les valeurs capturées
-                print(f"  Debug - Quantité capturée: '{match.group(3)}' -> {quantite}")
-                print(f"  Debug - Prix unitaire capturé: '{match.group(4)}' -> {prix_unitaire}")
-                print(f"  Debug - Montant HT capturé: '{match.group(6)}' -> {montant_ht}")
+                # Nettoyage des espaces dans les nombres
+                prix_unitaire = match.group(4).replace(' ', '')
+                montant_ht = match.group(6).replace(' ', '')
 
                 articles.append({
-                    'reference': match.group(1),
+                    'reference': match.group(1).strip(),  # Utiliser la référence telle quelle
                     'description': match.group(2).strip(),
-                    'quantite': quantite,
-                    'prix_unitaire': prix_unitaire,
-                    'remise': remise,
-                    'montant_ht': montant_ht,
-                    'tva': tva
+                    'quantite': float(match.group(3).replace(',', '.')),
+                    'prix_unitaire': float(prix_unitaire.replace(',', '.')),
+                    'remise': float(match.group(5).replace(',', '.')) / 100,
+                    'montant_ht': float(montant_ht.replace(',', '.')),
+                    'tva': float(match.group(7).replace(',', '.'))  # Déjà en pourcentage
                 })
                 print(f"  Article MEG extrait: {articles[-1]}")
-            except (ValueError, IndexError) as e:
-                print(f"Erreur lors de l'extraction d'un article MEG: {str(e)}")
+            except (IndexError, ValueError) as e:
+                print(f"Erreur lors de l'extraction d'un article MEG: {e}")
                 continue
     else:
         # Rechercher des remises éventuelles pour la facture entière
