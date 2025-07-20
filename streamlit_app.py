@@ -77,6 +77,10 @@ if uploaded_files:
                                 'tva': 0,
                                 'remise': 0
                             }),
+                            'frais_expedition': extracted_data.get('frais_expedition', {
+                                'montant': 0,
+                                'description': ''
+                            }),
                             'client_name': extracted_data.get('client_name', ''),
                             'numero_facture': extracted_data.get('numero_facture', ''),
                             'date_facture': extracted_data.get('date_facture', ''),

@@ -11,7 +11,7 @@ from data_extractor import extract_data
 
 def process_pdf_files():
     """Traite tous les PDF dans le folder et génère factures.json"""
-    pdf_folder = Path("data_factures/facturesv8")
+    pdf_folder = Path("data_factures/facturesv10")
     output_file = Path("factures.json")
 
     # Vérifier si le dossier existe
@@ -84,6 +84,10 @@ def process_pdf_files():
                         'tva': 0,
                         'remise': 0
                     },
+                    'frais_expedition': {
+                        'montant': 0,
+                        'description': ''
+                    },
                     'client_name': '',
                     'numero_facture': '',
                     'date_facture': '',
@@ -128,6 +132,10 @@ def process_invoice_pages(pdf_name, invoice_num, pages_text, all_invoices):
             'total_ttc': 0,
             'tva': 0,
             'remise': 0
+        },
+        'frais_expedition': {
+            'montant': 0,
+            'description': ''
         },
         'client_name': '',
         'numero_facture': '',
@@ -190,6 +198,10 @@ def load_invoice_data():
                             'total_ttc': 0,
                             'tva': 0,
                             'remise': 0
+                        },
+                        'frais_expedition': {
+                            'montant': 0,
+                            'description': ''
                         },
                         'client_name': '',
                         'numero_facture': '',
@@ -750,6 +762,10 @@ def main():
                         'total_ttc': 0,
                         'tva': 0,
                         'remise': 0
+                    },
+                    'frais_expedition': {
+                        'montant': 0,
+                        'description': ''
                     },
                     'client_name': '',
                     'numero_facture': '',
