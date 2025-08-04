@@ -1,11 +1,11 @@
 steps:
   # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/nomadsfacturation/nomads-factures', '.']
+    args: ['build', '-t', 'gcr.io/nomadsfacturation/nomads-facturation', '.']
 
   # Push the container image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/nomadsfacturation/nomads-factures']
+    args: ['push', 'gcr.io/nomadsfacturation/nomads-facturation']
 
   # Deploy container image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -13,9 +13,9 @@ steps:
     args:
       - 'run'
       - 'deploy'
-      - 'nomads-factures'
+      - 'nomads-facturation'
       - '--image'
-      - 'gcr.io/nomadsfacturation/nomads-factures'
+      - 'gcr.io/nomadsfacturation/nomads-facturation'
       - '--region'
       - 'europe-west1'
       - '--platform'
@@ -25,4 +25,4 @@ steps:
       - '8501'
 
 images:
-  - 'gcr.io/nomadsfacturation/nomads-factures'
+  - 'gcr.io/nomadsfacturation/nomads-facturation'
