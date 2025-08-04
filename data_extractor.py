@@ -158,6 +158,31 @@ def extract_data(text: str, type: str = 'meg') -> dict:
                 data['TOTAL']['tva'] = convert_to_float(total_match.group(2))
                 data['TOTAL']['total_ht'] = data['TOTAL']['total_ttc'] - data['TOTAL']['tva']
                 print(f"  Totaux internet: TTC={data['TOTAL']['total_ttc']}, TVA={data['TOTAL']['tva']}, HT={data['TOTAL']['total_ht']}")
+            else:
+                # Pattern alternatif pour le cas où "Total" est sur une ligne séparée
+                total_alt_match = re.search(r'([\d\s]+[.,]\d{2})\s*€\s*\(dont\s+([\d\s]+[.,]\d{2})\s*€\s*\nTotal\s*\nTVA\)', text)
+                if total_alt_match:
+                    data['TOTAL']['total_ttc'] = convert_to_float(total_alt_match.group(1))
+                    data['TOTAL']['tva'] = convert_to_float(total_alt_match.group(2))
+                    data['TOTAL']['total_ht'] = data['TOTAL']['total_ttc'] - data['TOTAL']['tva']
+                    print(f"  Totaux internet (pattern alternatif): TTC={data['TOTAL']['total_ttc']}, TVA={data['TOTAL']['tva']}, HT={data['TOTAL']['total_ht']}")
+                else:
+                    # Si on n'arrive toujours pas à extraire, calculer à partir des articles
+                    total_ttc_calculated = 0
+                    total_tva_calculated = 0
+                    for article in data.get('articles', []):
+                        prix_ttc = article.get('prix_ttc', 0)
+                        quantite = article.get('quantite', 0)
+                        total_ttc_calculated += prix_ttc * quantite
+                        # Calculer la TVA (20% du prix HT)
+                        prix_ht = article.get('prix_unitaire', 0)
+                        total_tva_calculated += prix_ht * quantite * 0.20
+                    
+                    if total_ttc_calculated > 0:
+                        data['TOTAL']['total_ttc'] = total_ttc_calculated
+                        data['TOTAL']['tva'] = total_tva_calculated
+                        data['TOTAL']['total_ht'] = total_ttc_calculated - total_tva_calculated
+                        print(f"  Totaux internet calculés depuis les articles: TTC={data['TOTAL']['total_ttc']}, TVA={data['TOTAL']['tva']}, HT={data['TOTAL']['total_ht']}")
 
             # Extraction des remises
             remise_patterns = [
@@ -572,6 +597,22 @@ def extract_articles(text: str, is_meg: bool) -> List[Dict]:
                     quantite = extracted_qty
                     prix_ttc = extracted_price
                     print(f"  Description nettoyée: '{description}', Quantité: {quantite}, Prix TTC: {prix_ttc} €")
+                else:
+                    # Nouveau pattern plus robuste pour capturer le prix et la quantité
+                    # Chercher dans le contexte de l'article
+                    article_context = text[max(0, match.start()-100):min(len(text), match.end()+100)]
+                    
+                    # Pattern pour capturer "quantité prix €" dans le contexte
+                    context_price_match = re.search(r'(\d+)\s+([\d\s]+[,.]\d+)\s*€', article_context)
+                    if context_price_match:
+                        extracted_qty = int(context_price_match.group(1))
+                        extracted_price = convert_to_float(context_price_match.group(2))
+                        
+                        # Vérifier que le prix est raisonnable (entre 1 et 10000€)
+                        if 1 <= extracted_price <= 10000:
+                            quantite = extracted_qty
+                            prix_ttc = extracted_price
+                            print(f"  Prix extrait du contexte: Quantité: {quantite}, Prix TTC: {prix_ttc} €")
 
                 # Si on n'a pas réussi à extraire les valeurs de la description, essayer les autres méthodes
                 if prix_ttc == 0:

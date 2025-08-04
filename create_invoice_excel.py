@@ -11,7 +11,7 @@ from data_extractor import extract_data
 
 def process_pdf_files():
     """Traite tous les PDF dans le folder et génère factures.json"""
-    pdf_folder = Path("data_factures/facturesv10")
+    pdf_folder = Path("data_factures/facturesv11")
     output_file = Path("factures.json")
 
     # Vérifier si le dossier existe
@@ -571,9 +571,10 @@ def create_invoice_dataframe(invoices_data):
                             # Si pas de prix TTC, utiliser le prix unitaire (qui est TTC pour les factures internet)
                             prix_articles_ttc = prix_unitaire
 
-                        # Le prix TTC est pour la totalité des articles, donc il faut d'abord diviser par la quantité
-                        prix_unitaire_ttc = prix_articles_ttc / quantite
-                        # Puis calculer le prix unitaire HT en divisant par 1.20
+                        # Pour les factures internet, le prix_ttc est déjà le prix unitaire TTC
+                        # Pas besoin de diviser par la quantité car c'est déjà le prix unitaire
+                        prix_unitaire_ttc = prix_articles_ttc
+                        # Calculer le prix unitaire HT en divisant par 1.20
                         prix_unitaire_ht = prix_unitaire_ttc / 1.20
                         prix_pour_excel = prix_unitaire_ht
                         montant_ht = prix_unitaire_ht * quantite

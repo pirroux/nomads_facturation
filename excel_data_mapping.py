@@ -11,9 +11,9 @@ def load_patterns() -> dict:
             "Type-facture": r"(?i)N°\s*:\s*(FAC\d+)",
             "Client": r"(?i)(?:société|SARL|SA|SAS|EURL|SASU)?\s*([A-Z][A-Za-zÀ-ÿ\s\-']+)",
             "Date facture": r"(?i)Date\s*:\s*(\d{2}/\d{2}/\d{4})",
-            "Credit TTC": r"Total\s+TTC\s*:?\s*([\d\s]+[.,]\d+)\s*€"
+            "Credit TTC": r"Total\s+TTC\s*:?\s*(\d+[.,]\d+)\s*€"
         },
-        "article_pattern": r"ART(\d+)\s*-([^\n]+?)\s+([\d\s]+,\d+)\s+([\d\s]+,\d+)\s*€\s*([\d\s]+,\d+)%\s*([\d\s]+,\d+)\s*€"
+        "article_pattern": r"ART(\d+)\s*-([^\n]+?)\s+(\d+,\d+)\s+(\d+,\d+)\s*€\s*(\d+,\d+)%\s*(\d+,\d+)\s*€"
     }
 
 def main():
