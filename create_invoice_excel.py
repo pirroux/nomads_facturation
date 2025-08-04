@@ -574,13 +574,23 @@ def create_invoice_dataframe(invoices_data):
                         # Pour les factures internet, le prix_ttc est déjà le prix unitaire TTC
                         # Pas besoin de diviser par la quantité car c'est déjà le prix unitaire
                         prix_unitaire_ttc = prix_articles_ttc
-                        # Calculer le prix unitaire HT en divisant par 1.20
-                        prix_unitaire_ht = prix_unitaire_ttc / 1.20
+                        
+                        # Vérifier si c'est un article CADEAU (TVA 0%)
+                        if "CADEAU" in article.get('reference', '').upper():
+                            # Pour les articles CADEAU, le prix TTC = prix HT (pas de TVA)
+                            prix_unitaire_ht = prix_unitaire_ttc
+                            montant_ht = prix_unitaire_ht * quantite
+                            tva_euros = 0  # Pas de TVA pour les articles CADEAU
+                            print(f"  Article CADEAU détecté dans Excel: {article.get('reference')} - TVA: 0 €")
+                        else:
+                            # Calculer le prix unitaire HT en divisant par 1.20
+                            prix_unitaire_ht = prix_unitaire_ttc / 1.20
+                            montant_ht = prix_unitaire_ht * quantite
+                            # Utiliser le taux de TVA de l'article ou 20% par défaut
+                            taux_tva_article = article.get('tva', 20.0) / 100
+                            tva_euros = montant_ht * taux_tva_article
+                        
                         prix_pour_excel = prix_unitaire_ht
-                        montant_ht = prix_unitaire_ht * quantite
-
-                        # La TVA est la différence entre le TTC et le HT
-                        tva_euros = montant_ht * 0.20
                     else:  # acompte
                         # Pour les factures d'acompte, le calcul reste standard
                         # Calculer montant HT si non disponible

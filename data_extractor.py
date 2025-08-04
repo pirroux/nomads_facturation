@@ -209,6 +209,7 @@ def extract_data(text: str, type: str = 'meg') -> dict:
 
             # Extraction des frais d'expédition
             expedition_patterns = [
+                r'([\d\s]+[.,]\d{2})\s*€\s*\(TTC\)\s*via\s+([^\n]+)\s*\nExpédition',
                 r'Expédition\s+([\d\s]+[.,]\d{2})\s*€\s*(?:\(TTC\))?\s*via\s+([^\n]+)',
                 r'Livraison\s+([\d\s]+[.,]\d{2})\s*€\s*(?:\(TTC\))?\s*via\s+([^\n]+)',
                 r'Frais\s+d[e\']expédition\s+([\d\s]+[.,]\d{2})\s*€\s*(?:\(TTC\))?\s*via\s+([^\n]+)',
@@ -454,15 +455,22 @@ def extract_articles(text: str, is_meg: bool) -> List[Dict]:
                 # Nettoyage des espaces dans les nombres
                 prix_unitaire = match.group(4).replace(' ', '')
                 montant_ht = match.group(6).replace(' ', '')
+                reference = match.group(1).strip()
+                tva_taux = float(match.group(7).replace(',', '.'))
+
+                # Vérifier si c'est un article CADEAU (TVA 0%)
+                if "CADEAU" in reference.upper():
+                    tva_taux = 0.0
+                    print(f"  Article CADEAU MEG détecté: {reference} - TVA appliquée: 0%")
 
                 articles.append({
-                    'reference': match.group(1).strip(),  # Utiliser la référence telle quelle
+                    'reference': reference,  # Utiliser la référence telle quelle
                     'description': match.group(2).strip(),
                     'quantite': float(match.group(3).replace(',', '.')),
                     'prix_unitaire': float(prix_unitaire.replace(',', '.')),
                     'remise': float(match.group(5).replace(',', '.')) / 100,
                     'montant_ht': float(montant_ht.replace(',', '.')),
-                    'tva': float(match.group(7).replace(',', '.'))  # Déjà en pourcentage
+                    'tva': tva_taux  # Taux de TVA (0% pour CADEAU, sinon valeur extraite)
                 })
                 print(f"  Article MEG extrait: {articles[-1]}")
             except (IndexError, ValueError) as e:
@@ -496,7 +504,7 @@ def extract_articles(text: str, is_meg: bool) -> List[Dict]:
                     pass
 
         # Pattern amélioré pour les articles internet
-        article_pattern = r'([A-Za-z0-9-]+(?:[^\n]+)?)\nUGS\s*:\s*([^\n]+)\n'
+        article_pattern = r'([^\n]+)\nUGS\s*:\s*([A-Z0-9-]+)\s+(\d+)\s+([\d\s]+[,.]\d+)\s*€'
         # Patterns améliorés pour trouver la quantité
         quantity_patterns = [
             r'Quantité\s*:\s*(\d+)',
@@ -577,119 +585,24 @@ def extract_articles(text: str, is_meg: bool) -> List[Dict]:
             try:
                 description = match.group(1).strip()
                 reference = match.group(2).strip()
+                quantite = int(match.group(3))
+                prix_ttc = convert_to_float(match.group(4))
 
-                # Rechercher la quantité avec plusieurs patterns
-                quantite = 1  # Valeur par défaut
-                article_text = text[max(0, match.start()-50):min(len(text), match.start()+300)]  # Plus large contexte
+                print(f"  Article extrait: Description='{description}', Référence='{reference}', Quantité={quantite}, Prix TTC={prix_ttc} €")
 
-                # Initialiser prix_ttc à 0 avant de l'utiliser
-                prix_ttc = 0
-
-                # Nettoyage de la description - séparer la description du prix et de la quantité
-                qty_price_match = re.search(r'([^\d]+)\s+(\d+)\s+([\d\s]+[,.]\d+)\s*€', description)
-                if qty_price_match:
-                    clean_description = qty_price_match.group(1).strip()
-                    extracted_qty = int(qty_price_match.group(2))
-                    extracted_price = convert_to_float(qty_price_match.group(3))
-
-                    # Mettre à jour la description pour qu'elle ne contienne que le texte
-                    description = clean_description
-                    quantite = extracted_qty
-                    prix_ttc = extracted_price
-                    print(f"  Description nettoyée: '{description}', Quantité: {quantite}, Prix TTC: {prix_ttc} €")
+                # Vérifier si c'est un article CADEAU (TVA 0%)
+                if "CADEAU" in reference.upper():
+                    taux_tva = 0.0
+                    print(f"  Article CADEAU détecté: {reference} - TVA appliquée: 0%")
+                    # Pour les articles CADEAU, le prix TTC = prix HT (pas de TVA)
+                    prix_unitaire_ht = prix_ttc
+                    montant_ht = prix_unitaire_ht * quantite
                 else:
-                    # Nouveau pattern plus robuste pour capturer le prix et la quantité
-                    # Chercher dans le contexte de l'article
-                    article_context = text[max(0, match.start()-100):min(len(text), match.end()+100)]
-                    
-                    # Pattern pour capturer "quantité prix €" dans le contexte
-                    context_price_match = re.search(r'(\d+)\s+([\d\s]+[,.]\d+)\s*€', article_context)
-                    if context_price_match:
-                        extracted_qty = int(context_price_match.group(1))
-                        extracted_price = convert_to_float(context_price_match.group(2))
-                        
-                        # Vérifier que le prix est raisonnable (entre 1 et 10000€)
-                        if 1 <= extracted_price <= 10000:
-                            quantite = extracted_qty
-                            prix_ttc = extracted_price
-                            print(f"  Prix extrait du contexte: Quantité: {quantite}, Prix TTC: {prix_ttc} €")
-
-                # Si on n'a pas réussi à extraire les valeurs de la description, essayer les autres méthodes
-                if prix_ttc == 0:
-                    # Si une quantité globale a été trouvée et que c'est le seul article, utiliser cette quantité
-                    if global_quantity and total_articles == 1:
-                        quantite = global_quantity
-                        print(f"  Utilisation de la quantité globale pour {reference}: {quantite}")
-                    else:
-                        # Sinon, chercher une quantité spécifique pour cet article
-                        for q_pattern in quantity_patterns:
-                            quantite_match = re.search(q_pattern, article_text, re.IGNORECASE)
-                            if quantite_match:
-                                try:
-                                    quantite = int(quantite_match.group(1))
-                                    print(f"  Quantité trouvée pour {reference}: {quantite}")
-                                    break
-                                except (ValueError, IndexError):
-                                    pass
-
-                    # Vérifier si on a un prix direct pour cet article
-                    for product_name, (qty, price) in direct_prices.items():
-                        if product_name.lower() in description.lower() or description.lower() in product_name.lower():
-                            prix_ttc = price
-                            if quantite == 1:  # Ne pas écraser une quantité spécifique déjà trouvée
-                                quantite = qty
-                            print(f"  Prix TTC associé trouvé pour {reference}: {prix_ttc} € (quantité: {quantite})")
-                            break
-
-                    # Si pas de prix direct, chercher avec d'autres patterns
-                    if prix_ttc == 0:
-                        for p_pattern in price_patterns:
-                            prix_match = re.search(p_pattern, article_text)
-                            if prix_match:
-                                prix_ttc = convert_to_float(prix_match.group(1))
-                                print(f"  Prix TTC trouvé pour {reference}: {prix_ttc} €")
-                                break
-
-                    # Attention particulière pour la facture 2025-02160
-                    if "2025-02160" in text and "LEPF-JONC00-5000" in reference:
-                        print(f"  Facture spéciale 2025-02160 détectée pour {reference}, quantité définie à 2")
-                        quantite = 2
-
-                    # Si toujours pas de prix, chercher un simple nombre suivi de €
-                    if prix_ttc == 0:
-                        prix_simple_match = re.search(r'([\d\s]+[,.]\d+)\s*€', article_text)
-                        if prix_simple_match:
-                            prix_ttc = convert_to_float(prix_simple_match.group(1))
-                            print(f"  Prix TTC extrait pour {reference}: {prix_ttc} €")
-
-                    # Si toujours pas de prix, utiliser la répartition comme fallback
-                    if prix_ttc == 0 and total_articles > 0 and total_ttc > 0:
-                        prix_ttc = total_ttc / total_articles
-                        print(f"  Prix TTC calculé par répartition pour {reference}: {prix_ttc} €")
-
-                # Calculer le prix HT à partir du TTC (division par 1.20)
-                prix_unitaire_ht = prix_ttc / 1.20
-                montant_ht = prix_unitaire_ht * quantite
-
-                # Chercher aussi les remises spécifiques à cet article
-                remise_article = 0
-                remise_article_patterns = [
-                    r'Remise.*?article.*?:\s*(-?[\d\s]+[,.]\d+)\s*€',
-                    r'Remise\s*:\s*(-?[\d\s]+[,.]\d+)\s*€'
-                ]
-
-                for r_pattern in remise_article_patterns:
-                    remise_match = re.search(r_pattern, article_text, re.IGNORECASE)
-                    if remise_match:
-                        try:
-                            remise_article = convert_to_float(remise_match.group(1))
-                            print(f"  Remise article trouvée pour {reference}: {remise_article} €")
-                            break
-                        except (ValueError, IndexError):
-                            pass
-
-                # Définir le taux de TVA (généralement 20% pour les factures internet)
-                taux_tva = 20.0
+                    # Calculer le prix HT à partir du TTC (division par 1.20)
+                    prix_unitaire_ht = prix_ttc / 1.20
+                    montant_ht = prix_unitaire_ht * quantite
+                    # Définir le taux de TVA (généralement 20% pour les factures internet)
+                    taux_tva = 20.0
 
                 articles.append({
                     'reference': reference,
@@ -697,7 +610,7 @@ def extract_articles(text: str, is_meg: bool) -> List[Dict]:
                     'quantite': quantite,
                     'prix_unitaire': prix_unitaire_ht,  # Prix HT
                     'prix_ttc': prix_ttc,  # Prix TTC
-                    'remise': remise_article,  # Remise spécifique à l'article
+                    'remise': 0,  # Pas de remise spécifique
                     'montant_ht': montant_ht,
                     'tva': taux_tva  # Taux de TVA en pourcentage
                 })
