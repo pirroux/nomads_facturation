@@ -503,8 +503,8 @@ def extract_articles(text: str, is_meg: bool) -> List[Dict]:
                 except (ValueError, IndexError):
                     pass
 
-        # Pattern amélioré pour les articles internet
-        article_pattern = r'([^\n]+)\nUGS\s*:\s*([A-Z0-9-]+)\s+(\d+)\s+([\d\s]+[,.]\d+)\s*€'
+        # Pattern amélioré pour les articles internet - gère les deux formats
+        article_pattern = r'([^\n]+)\nUGS\s*:\s*([A-Z0-9-]+)(?:\s+(\d+)\s+([\d\s]+[,.]\d+)\s*€|\s*\n(?:[^\n]*\s+)?(\d+)\s+([\d\s]+[,.]\d+)\s*€)'
         # Patterns améliorés pour trouver la quantité
         quantity_patterns = [
             r'Quantité\s*:\s*(\d+)',
@@ -585,8 +585,17 @@ def extract_articles(text: str, is_meg: bool) -> List[Dict]:
             try:
                 description = match.group(1).strip()
                 reference = match.group(2).strip()
-                quantite = int(match.group(3))
-                prix_ttc = convert_to_float(match.group(4))
+                
+                # Gérer les deux formats possibles
+                if match.group(3) and match.group(4):  # Format: même ligne
+                    quantite = int(match.group(3))
+                    prix_ttc = convert_to_float(match.group(4))
+                elif match.group(5) and match.group(6):  # Format: ligne séparée
+                    quantite = int(match.group(5))
+                    prix_ttc = convert_to_float(match.group(6))
+                else:
+                    print(f"  Erreur: Impossible d'extraire quantité et prix pour {reference}")
+                    continue
 
                 print(f"  Article extrait: Description='{description}', Référence='{reference}', Quantité={quantite}, Prix TTC={prix_ttc} €")
 
